@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "FERVIX",
+    "slug": "fervix-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "sdkVersion": "54.0.0",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F6FA"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fervix.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F7F6FA"
+      },
+      "package": "com.fervix.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-asset"
+    ]
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Vorherige",
+    "done": "Fertig",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "warning": "Warnung",
+    "info": "Information",
+    "start": "Start",
+    "stop": "Stopp",
+    "pause": "Pause",
+    "resume": "Fortsetzen"
+  },
+  "navigation": {
+    "start": "Start",
+    "info": "Info",
+    "support": "Support",
+    "settings": "Einstellungen"
+  },
+  "buttons": {
+    "startTreatment": "Behandlung starten",
+    "stopTreatment": "Behandlung stoppen",
+    "pauseTreatment": "Behandlung pausieren",
+    "resumeTreatment": "Behandlung fortsetzen",
+    "cancelTreatment": "Behandlung abbrechen",
+    "restartTreatment": "Behandlung neu starten",
+    "returnHome": "Zur Startseite zurückkehren",
+    "startNewSession": "Neue Sitzung starten",
+    "contactSupport": "Support kontaktieren",
+    "viewFaq": "FAQ anzeigen",
+    "downloadManual": "Handbuch herunterladen",
+    "changeLanguage": "Sprache ändern",
+    "saveSettings": "Einstellungen speichern"
+  },
+  "labels": {
+    "temperature": "Temperatur",
+    "duration": "Dauer",
+    "progress": "Fortschritt",
+    "status": "Status",
+    "profile": "Profil",
+    "language": "Sprache",
+    "sound": "Ton",
+    "vibration": "Vibration",
+    "sensitive": "Empfindlicher Modus",
+    "autoStart": "Automatischer Start",
+    "theme": "Design",
+    "version": "Version"
+  },
+  "start": {
+    "title": "Start",
+    "welcome": "Willkommen bei FERVIX",
+    "selectProfile": "Profil auswählen",
+    "adult": "Erwachsener",
+    "child": "Kind",
+    "instruction": "Zum Starten das Gerät auf den betroffenen Bereich legen",
+    "treatmentSettings": "Behandlungseinstellungen",
+    "temperatureLabel": "Temperatur",
+    "durationLabel": "Dauer (Minuten)",
+    "readyToStart": "Bereit zum Starten",
+    "recentSessions": "Letzte Sitzungen",
+    "noSessions": "Keine letzten Sitzungen",
+    "quickStats": "Schnellstatistiken"
+  },
+  "info": {
+    "title": "Info",
+    "about": "Über FERVIX",
+    "aboutDescription": "FERVIX ist eine medizinische Geräteanwendung, die darauf ausgelegt ist, sichere und wirksame Behandlungen zu bieten.",
+    "howItWorks": "Wie es funktioniert",
+    "howItWorksDescription": "Das Gerät verwendet fortschrittliche Technologie, um präzise Behandlungen nach medizinischen Protokollen zu liefern.",
+    "safetyInfo": "Sicherheitshinweise",
+    "safetyInfoDescription": "Bitte lesen Sie alle Sicherheitsanweisungen vor der Verwendung. Konsultieren Sie Ihren Gesundheitsdienstleister, wenn Sie Fragen haben.",
+    "steps": {
+      "heating": "Erwärmung",
+      "heatingDescription": "Gerät auf optimale Temperatur erwärmen",
+      "application": "Anwendung",
+      "applicationDescription": "Behandlung für die empfohlene Dauer anwenden",
+      "cooling": "Abkühlung",
+      "coolingDescription": "Gerät sicher abkühlen"
+    },
+    "tips": {
+      "title": "Tipps für optimale Nutzung",
+      "tip1": "Haut vor Gebrauch reinigen und trocknen",
+      "tip2": "Dünne, gleichmäßige Schicht auftragen",
+      "tip3": "Kontakt mit Augen vermeiden"
+    },
+    "social": {
+      "instagram": "Instagram",
+      "youtube": "Tutorial",
+      "support": "Support"
+    },
+    "faq": {
+      "title": "FAQ",
+      "question1": "Wie lange dauert eine Behandlung?",
+      "answer1": "Eine typische Behandlungssitzung dauert 10-15 Minuten, je nach gewähltem Profil.",
+      "question2": "Ist das Gerät für Kinder sicher?",
+      "answer2": "Ja, das Gerät hat ein spezielles Kinderprofil mit reduzierter Intensität für sichere Anwendung.",
+      "question3": "Kann ich es bei empfindlicher Haut verwenden?",
+      "answer3": "Ja, aktivieren Sie den empfindlichen Hautmodus für sanftere Behandlungseinstellungen.",
+      "question4": "Wie oft kann ich das Gerät verwenden?",
+      "answer4": "Befolgen Sie die Empfehlungen Ihres Gesundheitsdienstleisters, normalerweise maximal einmal täglich."
+    }
+  },
+  "support": {
+    "title": "Support",
+    "contactSupport": "Support kontaktieren",
+    "contactDescription": "Brauchen Sie Hilfe? Unser Support-Team steht Ihnen zur Verfügung.",
+    "contactUs": "Kontaktieren Sie uns",
+    "userManual": "Benutzerhandbuch",
+    "manualDescription": "Laden Sie das vollständige Benutzerhandbuch für detaillierte Anweisungen herunter.",
+    "downloadManual": "Handbuch herunterladen",
+    "faq": "FAQ",
+    "faqDescription": "Finden Sie Antworten auf häufig gestellte Fragen.",
+    "viewFaq": "FAQ anzeigen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "preferences": "Einstellungen",
+    "language": "Sprache",
+    "languageDescription": "App-Sprache ändern",
+    "profile": "Profil",
+    "profileDescription": "Wählen Sie Ihr Behandlungsprofil",
+    "sound": "Ton",
+    "soundDescription": "Tonbenachrichtigungen aktivieren",
+    "vibration": "Vibration",
+    "vibrationDescription": "Vibrationsbenachrichtigungen aktivieren",
+    "darkMode": "Dunkler Modus",
+    "darkModeDescription": "Dunkles Design aktivieren",
+    "sensitive": "Empfindlicher Modus",
+    "sensitiveDescription": "Sanftere Behandlungseinstellungen verwenden",
+    "autoStart": "Automatischer Start",
+    "autoStartDescription": "Behandlung automatisch starten, wenn bereit",
+    "theme": "Design",
+    "themeDescription": "Helles oder dunkles Design wählen",
+    "about": "Über",
+    "version": "Version 1.0.0"
+  },
+  "heating": {
+    "title": "Aufheizphase",
+    "heating": "Aufheizen...",
+    "status": "Status",
+    "statusDescription": "Das Gerät wird auf die erforderliche Temperatur aufgeheizt. Bitte warten...",
+    "cancel": "Abbrechen"
+  },
+  "cooling": {
+    "title": "Abkühlungsphase",
+    "cooling": "Abkühlen",
+    "status": "Status",
+    "statusDescription": "Das Gerät kühlt auf eine sichere Temperatur ab. Bitte warten...",
+    "progress": "Abkühlungsfortschritt"
+  },
+  "treatment": {
+    "title": "Behandlung läuft",
+    "active": "Behandlung aktiv",
+    "details": "Behandlungsdetails",
+    "detailsDescription": "Die Behandlung läuft derzeit. Bitte bleiben Sie ruhig und befolgen Sie die Anweisungen.",
+    "pause": "Pausieren",
+    "stop": "Stoppen"
+  },
+  "completed": {
+    "title": "Behandlung abgeschlossen",
+    "success": "Erfolg!",
+    "successDescription": "Ihre Behandlung wurde erfolgreich abgeschlossen.",
+    "summary": "Behandlungszusammenfassung",
+    "duration": "Dauer",
+    "temperature": "Temperatur",
+    "status": "Status",
+    "completed": "Erfolgreich abgeschlossen",
+    "returnHome": "Zur Startseite zurückkehren"
+  },
+  "aborted": {
+    "title": "Behandlung abgebrochen",
+    "stopped": "Behandlung gestoppt",
+    "stoppedDescription": "Die Behandlung wurde vor dem Abschluss gestoppt.",
+    "reason": "Grund",
+    "reasonDescription": "Die Behandlung wurde manuell vom Benutzer gestoppt.",
+    "nextSteps": "Nächste Schritte",
+    "nextStepsDescription": "• Überprüfen Sie das Gerät auf Probleme\n• Kontaktieren Sie den Support bei Bedarf\n• Sie können die Behandlung neu starten, wenn Sie bereit sind",
+    "restartTreatment": "Behandlung neu starten",
+    "returnHome": "Zur Startseite zurückkehren"
+  },
+  "languagePicker": {
+    "title": "Sprache auswählen",
+    "english": "Englisch",
+    "german": "Deutsch",
+    "portuguese": "Portugiesisch"
+  }
+}

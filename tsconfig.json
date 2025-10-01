@@ -1,0 +1,54 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es6"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@components/*": ["./src/components/*"],
+      "@screens/*": ["./src/screens/*"],
+      "@assets/*": ["./src/assets/*"],
+      "@theme/*": ["./src/theme/*"],
+      "@state/*": ["./src/state/*"],
+      "@i18n/*": ["./src/i18n/*"],
+      "@navigation/*": ["./src/navigation/*"],
+      "@fervix/shared/*": [
+        "packages/shared/src/*"
+      ],
+      "@fervix/ui/*": [
+        "packages/ui/src/*"
+      ],
+      "@fervix/utils/*": [
+        "packages/utils/src/*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "apps/**/*",
+    "packages/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/dist",
+    "**/build"
+  ],
+  "extends": "expo/tsconfig.base"
+}

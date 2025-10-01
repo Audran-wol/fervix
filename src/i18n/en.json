@@ -1,0 +1,191 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "done": "Done",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Information",
+    "start": "Start",
+    "stop": "Stop",
+    "pause": "Pause",
+    "resume": "Resume"
+  },
+  "navigation": {
+    "start": "Start",
+    "info": "Info",
+    "support": "Support",
+    "settings": "Settings"
+  },
+  "buttons": {
+    "startTreatment": "Start Treatment",
+    "stopTreatment": "Stop Treatment",
+    "pauseTreatment": "Pause Treatment",
+    "resumeTreatment": "Resume Treatment",
+    "cancelTreatment": "Cancel Treatment",
+    "restartTreatment": "Restart Treatment",
+    "returnHome": "Return to Home",
+    "startNewSession": "Start a new session",
+    "contactSupport": "Contact Support",
+    "viewFaq": "View FAQ",
+    "downloadManual": "Download Manual",
+    "changeLanguage": "Change Language",
+    "saveSettings": "Save Settings"
+  },
+  "labels": {
+    "temperature": "Temperature",
+    "duration": "Duration",
+    "progress": "Progress",
+    "status": "Status",
+    "profile": "Profile",
+    "language": "Language",
+    "sound": "Sound",
+    "vibration": "Vibration",
+    "sensitive": "Sensitive Mode",
+    "autoStart": "Auto Start",
+    "theme": "Theme",
+    "version": "Version"
+  },
+  "start": {
+    "title": "Start",
+    "welcome": "Welcome to FERVIX",
+    "selectProfile": "Select Profile",
+    "adult": "Adult",
+    "child": "Child",
+    "instruction": "To start, place the device on the affected area",
+    "treatmentSettings": "Treatment Settings",
+    "temperatureLabel": "Temperature",
+    "durationLabel": "Duration (minutes)",
+    "readyToStart": "Ready to Start",
+    "recentSessions": "Recent Sessions",
+    "noSessions": "No recent sessions",
+    "quickStats": "Quick Stats"
+  },
+  "info": {
+    "title": "Info",
+    "about": "About FERVIX",
+    "aboutDescription": "FERVIX is a medical device application designed to provide safe and effective treatment.",
+    "howItWorks": "How it Works",
+    "howItWorksDescription": "The device uses advanced technology to deliver precise treatment according to medical protocols.",
+    "safetyInfo": "Safety Information",
+    "safetyInfoDescription": "Please read all safety instructions before use. Consult your healthcare provider if you have any questions.",
+    "steps": {
+      "heating": "Heating",
+      "heatingDescription": "Warm up the device",
+      "application": "Application", 
+      "applicationDescription": "The target area",
+      "cooling": "Cooling",
+      "coolingDescription": "A few minutes"
+    },
+    "tips": {
+      "title": "Tips for optimal usage",
+      "tip1": "Ensure skin is clean and dry",
+      "tip2": "Use thin, even layer",
+      "tip3": "Avoid contact with eyes"
+    },
+    "social": {
+      "instagram": "Instagram",
+      "youtube": "Tutorial",
+      "support": "Support"
+    },
+    "faq": {
+      "title": "FAQ",
+      "question1": "How long does a treatment take?",
+      "answer1": "A typical treatment session takes 10-15 minutes depending on the selected profile.",
+      "question2": "Is the device safe for children?",
+      "answer2": "Yes, the device has a special child profile with reduced intensity for safe use.",
+      "question3": "Can I use it on sensitive skin?",
+      "answer3": "Yes, enable the sensitive skin mode for gentler treatment settings.",
+      "question4": "How often can I use the device?",
+      "answer4": "Follow your healthcare provider's recommendations, typically once per day maximum."
+    }
+  },
+  "support": {
+    "title": "Support",
+    "contactSupport": "Contact Support",
+    "contactDescription": "Need help? Our support team is here to assist you.",
+    "contactUs": "Contact Us",
+    "userManual": "User Manual",
+    "manualDescription": "Download the complete user manual for detailed instructions.",
+    "downloadManual": "Download Manual",
+    "faq": "FAQ",
+    "faqDescription": "Find answers to frequently asked questions."
+  },
+  "settings": {
+    "title": "Settings",
+    "preferences": "Preferences",
+    "language": "Language",
+    "languageDescription": "Change the app language",
+    "profile": "Profile",
+    "profileDescription": "Select your treatment profile",
+    "sound": "Sound",
+    "soundDescription": "Enable sound notifications",
+    "vibration": "Vibration",
+    "vibrationDescription": "Enable vibration notifications",
+    "darkMode": "Dark Mode",
+    "darkModeDescription": "Enable dark theme",
+    "sensitive": "Sensitive Mode",
+    "sensitiveDescription": "Use gentler treatment settings",
+    "autoStart": "Auto Start",
+    "autoStartDescription": "Automatically start treatment when ready",
+    "theme": "Theme",
+    "themeDescription": "Choose light or dark theme",
+    "about": "About",
+    "version": "Version 1.0.0"
+  },
+  "heating": {
+    "title": "Heating Phase",
+    "heating": "Heating...",
+    "status": "Status",
+    "statusDescription": "Device is heating up to the required temperature. Please wait...",
+    "progress": "Heating Progress"
+  },
+  "cooling": {
+    "title": "Cooling Phase",
+    "cooling": "Cooling down",
+    "status": "Status",
+    "statusDescription": "Device is cooling down to safe temperature. Please wait...",
+    "progress": "Cooling Progress"
+  },
+  "treatment": {
+    "title": "Treatment in Progress",
+    "active": "Treatment in progress",
+    "details": "Treatment Details",
+    "detailsDescription": "Treatment is currently in progress. Please remain still and follow the instructions.",
+    "progress": "Treatment Progress",
+    "timeRemaining": "Time Remaining"
+  },
+  "completed": {
+    "title": "Treatment Completed",
+    "success": "Success!",
+    "successDescription": "Your treatment has been completed successfully.",
+    "summary": "Treatment Summary",
+    "duration": "Duration",
+    "temperature": "Temperature",
+    "status": "Status",
+    "completed": "Completed successfully"
+  },
+  "aborted": {
+    "title": "Treatment Aborted",
+    "stopped": "Treatment Stopped",
+    "stoppedDescription": "The treatment was stopped before completion.",
+    "reason": "Reason",
+    "reasonDescription": "Treatment was manually stopped by the user.",
+    "nextSteps": "What to do next",
+    "nextStepsDescription": "• Check the device for any issues\n• Contact support if needed\n• You can restart treatment when ready"
+  },
+  "languagePicker": {
+    "title": "Select Language",
+    "english": "English",
+    "german": "German",
+    "portuguese": "Portuguese"
+  }
+}
