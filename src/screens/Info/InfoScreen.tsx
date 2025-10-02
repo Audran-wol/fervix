@@ -11,12 +11,289 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { colors } from '../../theme/colors';
+import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 
 export const InfoScreen: React.FC = () => {
   const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: 16,
+      paddingTop: 20,
+    },
+    
+    // Header
+    header: {
+      alignItems: 'center',
+      marginBottom: 32,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.primary,
+      letterSpacing: 1,
+    },
+
+    // Section
+    section: {
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      padding: 28,
+      marginBottom: 24,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sectionTitle: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: '#6B7280',
+      textAlign: 'center',
+      marginBottom: 28,
+      letterSpacing: 0.5,
+    },
+
+    // Steps
+    stepsContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      paddingHorizontal: 8,
+    },
+    step: {
+      flex: 1,
+      alignItems: 'center',
+      maxWidth: 100,
+    },
+    stepIcon: {
+      width: 70,
+      height: 70,
+      borderRadius: 35,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    stepIconImage: {
+      width: 36,
+      height: 36,
+    },
+    heatingIcon: {
+      backgroundColor: colors['primary-100'],
+    },
+    applicationIcon: {
+      backgroundColor: '#E5E7FF',
+    },
+    coolingIcon: {
+      backgroundColor: '#E5F3FF',
+    },
+    stepTitle: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      marginBottom: 6,
+      textAlign: 'center',
+    },
+    stepDescription: {
+      fontSize: 12,
+      color: colors.textMuted,
+      textAlign: 'center',
+      lineHeight: 16,
+      paddingHorizontal: 4,
+    },
+
+    // Connecting Lines
+    connectingLine: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginHorizontal: 12,
+      marginTop: 35, // Align with center of step icons
+    },
+    line: {
+      width: 30,
+      height: 2,
+      backgroundColor: colors.primary,
+      borderRadius: 1,
+    },
+
+    // Tips
+    tipsHeader: {
+      marginBottom: 24,
+    },
+    tipsTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: '#6B7280',
+      letterSpacing: 0.3,
+    },
+    tipsContainer: {
+      marginBottom: 28,
+    },
+    tipItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 16,
+    },
+    tipBullet: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary,
+      marginRight: 16,
+      marginTop: 6,
+    },
+    tipText: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.textPrimary,
+      lineHeight: 22,
+      fontWeight: '500',
+    },
+
+    // Social
+    socialContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    socialCard: {
+      flex: 1,
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      alignItems: 'center',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    socialIcon: {
+      width: 48,
+      height: 48,
+      marginBottom: 12,
+    },
+    socialIconLarge: {
+      width: 52,
+      height: 52,
+    },
+    socialLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      alignSelf: 'stretch',
+    },
+    socialInstagram: {},
+    socialYoutube: {},
+    socialSupport: {},
+
+    // FAQ
+    faqSection: {
+      marginBottom: 32,
+    },
+    faqHeader: {
+      marginBottom: 24,
+      alignItems: 'center',
+    },
+    faqTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      marginBottom: 8,
+      letterSpacing: 0.5,
+      textAlign: 'center',
+    },
+    faqSubtitle: {
+      fontSize: 14,
+      color: colors.textMuted,
+      textAlign: 'center',
+      fontWeight: '500',
+    },
+    faqContainer: {
+      gap: 12,
+    },
+    faqItem: {
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      overflow: 'hidden',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    faqItemExpanded: {
+      borderColor: colors.primary,
+      borderWidth: 2,
+      shadowOpacity: 0.12,
+      transform: [{ scale: 1.02 }],
+    },
+    faqQuestionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 24,
+    },
+    faqQuestionContainer: {
+      flex: 1,
+      marginRight: 16,
+    },
+    faqQuestion: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      lineHeight: 22,
+    },
+    faqChevron: {
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 16,
+      backgroundColor: colors['primary-100'],
+    },
+    faqDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginHorizontal: 24,
+    },
+    faqAnswerContainer: {
+      paddingHorizontal: 24,
+      paddingVertical: 20,
+    },
+    faqAnswer: {
+      fontSize: 15,
+      color: colors.textMuted,
+      lineHeight: 24,
+      fontWeight: '400',
+    },
+
+    bottomSpacing: {
+      height: 24,
+    },
+  });
 
   const handleSocialPress = (platform: string) => {
     // Handle social media links
@@ -182,7 +459,7 @@ export const InfoScreen: React.FC = () => {
           <View style={styles.faqSection}>
             <View style={styles.faqHeader}>
               <Text style={styles.faqTitle}>{t('info.faq.title')}</Text>
-              <Text style={styles.faqSubtitle}>Frequently Asked Questions</Text>
+              <Text style={styles.faqSubtitle}>{t('info.faq.subtitle')}</Text>
             </View>
             
             <View style={styles.faqContainer}>
@@ -231,280 +508,5 @@ export const InfoScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-  
-  // Header
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.primary,
-    letterSpacing: 1,
-  },
-
-  // Section
-  section: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 28,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: 28,
-    letterSpacing: 0.5,
-  },
-
-  // Steps
-  stepsContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-  },
-  step: {
-    flex: 1,
-    alignItems: 'center',
-    maxWidth: 100,
-  },
-  stepIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  stepIconImage: {
-    width: 36,
-    height: 36,
-  },
-  heatingIcon: {
-    backgroundColor: '#FFE5E5',
-  },
-  applicationIcon: {
-    backgroundColor: '#E5E7FF',
-  },
-  coolingIcon: {
-    backgroundColor: '#E5F3FF',
-  },
-  stepTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  stepDescription: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 16,
-    paddingHorizontal: 4,
-  },
-
-  // Connecting Lines
-  connectingLine: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 12,
-    marginTop: 35, // Align with center of step icons
-  },
-  line: {
-    width: 30,
-    height: 2,
-    backgroundColor: colors.primary,
-    borderRadius: 1,
-  },
-
-  // Tips
-  tipsHeader: {
-    marginBottom: 24,
-  },
-  tipsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    letterSpacing: 0.3,
-  },
-  tipsContainer: {
-    marginBottom: 28,
-  },
-  tipItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  tipBullet: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-    marginRight: 16,
-    marginTop: 6,
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.textPrimary,
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-
-  // Social
-  socialContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  socialCard: {
-    flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#F5F5F5',
-  },
-  socialIcon: {
-    width: 48,
-    height: 48,
-    marginBottom: 12,
-  },
-  socialIconLarge: {
-    width: 52,
-    height: 52,
-  },
-  socialLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    alignSelf: 'stretch',
-  },
-  socialInstagram: {},
-  socialYoutube: {},
-  socialSupport: {},
-
-  // FAQ
-  faqSection: {
-    marginBottom: 32,
-  },
-  faqHeader: {
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  faqTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 8,
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
-  faqSubtitle: {
-    fontSize: 14,
-    color: colors.textMuted,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  faqContainer: {
-    gap: 12,
-  },
-  faqItem: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#F5F5F5',
-  },
-  faqItemExpanded: {
-    borderColor: colors.primary,
-    borderWidth: 2,
-    shadowOpacity: 0.12,
-    transform: [{ scale: 1.02 }],
-  },
-  faqQuestionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 24,
-  },
-  faqQuestionContainer: {
-    flex: 1,
-    marginRight: 16,
-  },
-  faqQuestion: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    lineHeight: 22,
-  },
-  faqChevron: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    backgroundColor: '#FFF0F0',
-  },
-  faqDivider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginHorizontal: 24,
-  },
-  faqAnswerContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-  },
-  faqAnswer: {
-    fontSize: 15,
-    color: colors.textMuted,
-    lineHeight: 24,
-    fontWeight: '400',
-  },
-
-  bottomSpacing: {
-    height: 24,
-  },
-});
 
 export default InfoScreen;

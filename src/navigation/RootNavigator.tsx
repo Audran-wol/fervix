@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../theme/useTheme';
 
 // Import screens
 import HomeScreen from '../screens/Home/HomeScreen';
@@ -42,25 +43,33 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const MainTabNavigator = () => {
   const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
 
   return (
         <Tab.Navigator
           screenOptions={{
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: '#FFFFFF',
+              backgroundColor: isDark ? colors.surface : '#FFFFFF',
               borderTopWidth: 0,
               height: 64,
               paddingBottom: 8,
               paddingTop: 8,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: 0,
+              borderTopRightRadius: 0,
+              elevation: 0,
+              shadowOpacity: 0,
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
             },
-            tabBarActiveTintColor: '#E01919',
-            tabBarInactiveTintColor: '#4B5563', // Darker gray (was #9CA3AF)
+            tabBarActiveTintColor: colors.primary,
+            tabBarInactiveTintColor: isDark ? colors.textMuted : '#4B5563',
             tabBarLabelStyle: {
               fontSize: 12,
               fontFamily: 'Roboto-Medium',
+              color: isDark ? colors.textMuted : '#4B5563',
             },
             tabBarIconStyle: {
               fontSize: 22,

@@ -61,6 +61,7 @@
     "adult": "Erwachsener",
     "child": "Kind",
     "instruction": "Zum Starten das Gerät auf den betroffenen Bereich legen",
+    "insertDevice": "Fervix-Gerät einstecken zum Starten",
     "treatmentSettings": "Behandlungseinstellungen",
     "temperatureLabel": "Temperatur",
     "durationLabel": "Dauer (Minuten)",
@@ -98,6 +99,7 @@
     },
     "faq": {
       "title": "FAQ",
+      "subtitle": "Häufig gestellte Fragen",
       "question1": "Wie lange dauert eine Behandlung?",
       "answer1": "Eine typische Behandlungssitzung dauert 10-15 Minuten, je nach gewähltem Profil.",
       "question2": "Ist das Gerät für Kinder sicher?",

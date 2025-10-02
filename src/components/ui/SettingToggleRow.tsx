@@ -8,7 +8,8 @@ import {
   Platform,
   Animated,
 } from 'react-native';
-import { colors, typography } from '../../theme';
+import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import * as Haptics from 'expo-haptics';
 
 interface SettingToggleRowProps {
@@ -26,6 +27,7 @@ export const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
   onValueChange,
   style,
 }) => {
+  const { colors } = useTheme();
   const thumbPosition = React.useRef(new Animated.Value(value ? 32 : 0)).current;
   const trackColor = React.useRef(new Animated.Value(value ? 1 : 0)).current;
 
@@ -54,6 +56,61 @@ export const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
   const trackBackgroundColor = trackColor.interpolate({
     inputRange: [0, 1],
     outputRange: ['#D1D5DB', colors.primary],
+  });
+
+  const styles = StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      gap: 16,
+    },
+    leftSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    iconContainer: {
+      marginRight: 20,
+    },
+    label: {
+      ...typography.textStyles.title,
+      color: colors.textPrimary,
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    toggle: {
+      width: 70,
+      height: 40,
+      borderRadius: 20,
+      padding: 3,
+      justifyContent: 'center',
+    },
+    track: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 20,
+      borderWidth: 2,
+      borderColor: '#D1D5DB',
+      justifyContent: 'center',
+    },
+    thumb: {
+      width: 26,
+      height: 26,
+      backgroundColor: colors.white,
+      borderRadius: 13,
+      shadowColor: '#101828',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 4,
+    },
   });
 
   return (
@@ -90,57 +147,3 @@ export const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    gap: 20,
-  },
-  leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconContainer: {
-    marginRight: 12,
-  },
-  label: {
-    ...typography.textStyles.title,
-    color: colors.textPrimary,
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  toggle: {
-    width: 70,
-    height: 40,
-    borderRadius: 20,
-    padding: 3,
-    justifyContent: 'center',
-  },
-  track: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    justifyContent: 'center',
-  },
-  thumb: {
-    width: 26,
-    height: 26,
-    backgroundColor: colors.white,
-    borderRadius: 13,
-    shadowColor: '#101828',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-});

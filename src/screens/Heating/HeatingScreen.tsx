@@ -13,14 +13,102 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme/colors';
+import { useTheme } from '../../theme/useTheme';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export const HeatingScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
   const [progress, setProgress] = useState(0);
+  
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
+    },
+    backButton: {
+      position: 'absolute',
+      top: 50,
+      left: 20,
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      backgroundColor: colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+      zIndex: 10,
+    },
+    fullScreenContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 20,
+    },
+    circle: {
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    fillContainer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      overflow: 'hidden',
+    },
+    fill: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      backgroundColor: '#FCD34D', // Yellow filling color
+    },
+    iconContainer: {
+      width: 250,
+      height: 250,
+      borderRadius: 125,
+      backgroundColor: colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.25,
+      shadowRadius: 20,
+      elevation: 10,
+    },
+  heatIcon: {
+    width: 120,
+    height: 120,
+    tintColor: '#6B7280',
+  },
+    titleContainer: {
+      position: 'absolute',
+      bottom: 100,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 10,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginTop: 10,
+    },
+  });
   
   // Animation values
   const fillAnimation = useRef(new Animated.Value(0)).current;
@@ -149,90 +237,5 @@ export const HeatingScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#E5E7EB', // Grey background to match circle
-  },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    zIndex: 10,
-  },
-  fullScreenContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  circle: {
-    backgroundColor: '#E5E7EB', // Grey circle
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  fillContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    overflow: 'hidden',
-  },
-  fill: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    backgroundColor: '#FCD34D', // Yellow filling color
-  },
-  iconContainer: {
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  heatIcon: {
-    width: 120,
-    height: 120,
-    tintColor: '#6B7280', // Grey tint for icon
-  },
-  titleContainer: {
-    position: 'absolute',
-    bottom: 100,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-});
 
 export default HeatingScreen;

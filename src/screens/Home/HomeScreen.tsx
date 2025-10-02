@@ -13,7 +13,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { colors, typography } from '../../theme';
+import { useTheme } from '../../theme/useTheme';
+import { typography } from '../../theme/typography';
 import { ProfileCard, SettingToggleRow, InfoCard } from '../../components/ui';
 import { useSessionStore } from '../../state/useSessionStore';
 import { useSettingsStore } from '../../state/useSettingsStore';
@@ -22,8 +23,158 @@ export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
   const { profile, setProfile } = useSessionStore();
   const { sensitive, setSensitive } = useSettingsStore();
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
+    scroll: { flex: 1 },
+    content: { paddingHorizontal: 16, paddingBottom: 24, gap: 16 },
+
+    /* AppBar */
+    appBar: {
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
+    },
+    logoText: {
+      fontSize: 36,
+      fontWeight: 'bold',
+      color: colors.primary,
+      letterSpacing: 2,
+      textAlign: 'center',
+    },
+    appBarDivider: {
+      position: 'absolute',
+      bottom: 0, left: 0, right: 0,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: '#E5E7EB',
+    },
+
+    /* Grid */
+    grid: { flexDirection: 'row', columnGap: 16, marginTop: 12 },
+    gridItem: { flex: 1, minHeight: 220 },
+
+    /* Sensitive card (soft; no dark borders) */
+    sensitiveCard: {
+      backgroundColor: colors.card,
+      borderRadius: 32,
+      borderWidth: 0,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      shadowColor: '#000',
+      shadowOpacity: 0.10,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+
+    /* Clean Sensitive icon - no card */
+    sensIcon: {
+      width: 80,
+      height: 80,
+      tintColor: colors.primary,
+    },
+
+    /* Insert Device Card */
+    insertDeviceCard: {
+      backgroundColor: '#E3F2FD',
+      borderRadius: 40,
+      borderWidth: 0,
+      paddingHorizontal: 28,
+      paddingVertical: 28,
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 5,
+      minHeight: 100,
+      marginBottom: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    insertDeviceText: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: '#6B7280',
+      textAlign: 'center',
+      lineHeight: 28,
+    },
+    instructionText: {
+      ...typography.textStyles.body,
+      color: colors.textPrimary,
+      textAlign: 'center',
+      fontSize: 16,
+      lineHeight: 22,
+      fontWeight: '500',
+    },
+
+    /* Illustration area */
+    illustrationWrap: {
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      marginTop: 6,
+      position: 'relative',
+      paddingVertical: 12,
+    },
+    illustration: { 
+      width: 200, 
+      height: 200,
+    },
+
+    /* Pulse (from below, subtle) */
+    pulse: {
+      position: 'absolute',
+      bottom: 8,
+      alignSelf: 'center',
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      backgroundColor: colors['primary-100'],
+      borderWidth: 2,
+      borderColor: 'rgba(224,25,25,0.22)',
+    },
+
+    /* Hint */
+    pulseHint: { marginTop: 8, fontSize: 12, color: colors.textMuted },
+
+    /* Warm-up Button */
+    warmupButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 32,
+      paddingVertical: 18,
+      paddingHorizontal: 24,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 16,
+      elevation: 8,
+      gap: 12,
+    },
+    warmupIconContainer: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    warmupIcon: {
+      width: 20,
+      height: 20,
+      tintColor: '#FFFFFF',
+    },
+    warmupButtonText: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: '#FFFFFF',
+      letterSpacing: 0.5,
+    },
+  });
 
   // Animations (bobbing + pulse-from-below)
   const bob = useRef(new Animated.Value(0)).current;
@@ -70,6 +221,7 @@ export const HomeScreen: React.FC = () => {
             selected={profile === 'child'}
             onPress={() => setProfile('child')}
             style={styles.gridItem}
+            isChild={true}
           />
           <ProfileCard
             label={t('start.adult')}
@@ -85,7 +237,7 @@ export const HomeScreen: React.FC = () => {
           <SettingToggleRow
             leftIcon={
               <Image
-                source={require('../../assets/images/icons/sensitive.png')}
+                source={require('../../assets/images/icons/sensitive2.png')}
                 style={styles.sensIcon}
                 resizeMode="contain"
               />
@@ -96,12 +248,6 @@ export const HomeScreen: React.FC = () => {
           />
         </View>
 
-        {/* Instruction pill */}
-        <InfoCard style={styles.instructionCard}>
-          <Text style={styles.instructionText}>
-            {t('start.instruction')}
-          </Text>
-        </InfoCard>
 
         {/* Warm-up Button */}
         <TouchableOpacity 
@@ -119,8 +265,15 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.warmupButtonText}>{t('buttons.startTreatment')}</Text>
         </TouchableOpacity>
 
-        {/* Illustration (no circle): bobbing image + rising pulse */}
-        <View style={styles.illustrationWrap}>
+        {/* Insert Device Instruction */}
+        <View style={styles.insertDeviceCard}>
+          <Text style={styles.insertDeviceText}>
+            {t('start.insertDevice')}
+          </Text>
+        </View>
+
+        {/* Illustration (commented out) */}
+        {/* <View style={styles.illustrationWrap}>
           <Animated.View
             pointerEvents="none"
             style={[
@@ -134,7 +287,7 @@ export const HomeScreen: React.FC = () => {
             resizeMode="contain"
           />
           <Text style={styles.pulseHint}>Connect the device to begin</Text>
-        </View>
+        </View> */}
 
         <View style={{ height: 28 }} />
       </ScrollView>
@@ -142,142 +295,5 @@ export const HomeScreen: React.FC = () => {
   );
 };
 
-const P = 16;
-const LIGHT_RED = '#FFF1F1';
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  scroll: { flex: 1 },
-  content: { paddingHorizontal: P, paddingBottom: 24, gap: 16 },
-
-  /* AppBar */
-  appBar: {
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    backgroundColor: colors.surface,
-  },
-  logoText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: colors.primary,
-    letterSpacing: 2,
-    textAlign: 'center',
-  },
-  appBarDivider: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-  },
-
-  /* Grid */
-  grid: { flexDirection: 'row', columnGap: 12 },
-  gridItem: { flex: 1, minHeight: 164 },
-
-  /* Sensitive card (soft; no dark borders) */
-  sensitiveCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 0,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    shadowColor: '#101828',
-    shadowOpacity: 0.10,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-
-  /* Clean Sensitive icon - no card */
-  sensIcon: {
-    width: 40,
-    height: 40,
-    tintColor: colors.primary,
-  },
-
-  /* Instruction pill */
-  instructionCard: {
-    backgroundColor: '#FFF3F3',
-    borderRadius: 18,
-    borderWidth: 0,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    shadowColor: '#101828',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  instructionText: {
-    ...typography.textStyles.body,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-
-  /* Illustration area */
-  illustrationWrap: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: 6,
-    position: 'relative',
-    paddingVertical: 12,
-  },
-  illustration: { width: 200, height: 200 },
-
-  /* Pulse (from below, subtle) */
-  pulse: {
-    position: 'absolute',
-    bottom: 8,
-    alignSelf: 'center',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: LIGHT_RED,
-    borderWidth: 2,
-    borderColor: 'rgba(224,25,25,0.22)',
-  },
-
-  /* Hint */
-  pulseHint: { marginTop: 8, fontSize: 12, color: '#6B7280' },
-
-  /* Warm-up Button */
-  warmupButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-    gap: 12,
-  },
-  warmupIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  warmupIcon: {
-    width: 20,
-    height: 20,
-    tintColor: '#FFFFFF',
-  },
-  warmupButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-});
 
 export default HomeScreen;

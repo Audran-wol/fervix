@@ -5,11 +5,141 @@ import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../theme/useTheme';
 
 export const FinalCompletedScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
   const animationRef = useRef<LottieView>(null);
+
+  const styles = StyleSheet.create({
+    /* Screen */
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
+    },
+
+    /* >>> New background (pure Views, whisper-soft) */
+    backgroundContainer: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 1,
+    },
+    baseWhite: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
+    },
+    glow: {
+      position: 'absolute',
+      borderRadius: 9999,
+      // For Android, simulate softness via larger size + lower opacity (no blur needed)
+    },
+    glowTopRight: {
+      width: 420,
+      height: 420,
+      right: -140,
+      top: -120,
+      backgroundColor: 'rgba(224, 25, 25, 0.10)', // brand red (very light)
+    },
+    glowCenterWhite: {
+      width: 360,
+      height: 360,
+      left: '50%',
+      top: '28%',
+      marginLeft: -180,
+      backgroundColor: isDark ? colors.surface : '#FFFFFF', // keeps center bright
+    },
+    glowBottomRight: {
+      width: 520,
+      height: 420,
+      right: -220,
+      bottom: -160,
+      backgroundColor: 'rgba(230, 242, 255, 0.28)', // cool whisper tint
+    },
+    glowBottomLeft: {
+      width: 380,
+      height: 380,
+      left: -140,
+      bottom: -100,
+      backgroundColor: 'rgba(16, 185, 129, 0.08)', // soft green accent
+    },
+
+    /* Back button (unchanged) */
+    backButton: {
+      position: 'absolute',
+      top: 50,
+      left: 20,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+      zIndex: 10,
+    },
+
+    /* Content (improved layout) */
+    content: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 32,
+      paddingVertical: 60,
+      paddingBottom: 100, // Add more bottom padding to avoid navbar
+      zIndex: 10,
+    },
+    successContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 40, // Add space between content and button
+    },
+    successAnimation: {
+      width: 280,
+      height: 280,
+      marginBottom: 24,
+    },
+    completedText: {
+      fontSize: 36,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: 12,
+      letterSpacing: -0.5,
+    },
+    subtitleText: {
+      fontSize: 16,
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginBottom: 40,
+      fontWeight: '500',
+    },
+    newSessionButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 20,
+      paddingHorizontal: 48,
+      borderRadius: 20, // More rounded for modern look
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 6,
+      minWidth: 280,
+      alignSelf: 'center',
+      marginTop: 20, // Add margin from content above
+    },
+    buttonText: {
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: '700',
+      textAlign: 'center',
+      letterSpacing: 0.5,
+    },
+  });
 
   useEffect(() => {
     animationRef.current?.play();
@@ -81,130 +211,5 @@ export const FinalCompletedScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  /* Screen */
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-
-  /* >>> New background (pure Views, whisper-soft) */
-  backgroundContainer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
-  },
-  baseWhite: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFFFFF',
-  },
-  glow: {
-    position: 'absolute',
-    borderRadius: 9999,
-    // For Android, simulate softness via larger size + lower opacity (no blur needed)
-  },
-  glowTopRight: {
-    width: 420,
-    height: 420,
-    right: -140,
-    top: -120,
-    backgroundColor: 'rgba(224, 25, 25, 0.10)', // brand red (very light)
-  },
-  glowCenterWhite: {
-    width: 360,
-    height: 360,
-    left: '50%',
-    top: '28%',
-    marginLeft: -180,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)', // keeps center bright
-  },
-  glowBottomRight: {
-    width: 520,
-    height: 420,
-    right: -220,
-    bottom: -160,
-    backgroundColor: 'rgba(230, 242, 255, 0.28)', // cool whisper tint
-  },
-  glowBottomLeft: {
-    width: 380,
-    height: 380,
-    left: -140,
-    bottom: -100,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)', // soft green accent
-  },
-
-  /* Back button (unchanged) */
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    zIndex: 10,
-  },
-
-  /* Content (unchanged) */
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 32,
-    paddingVertical: 60,
-    zIndex: 10,
-  },
-  successContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  successAnimation: {
-    width: 280,
-    height: 280,
-    marginBottom: 24,
-  },
-  completedText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  subtitleText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 40,
-    fontWeight: '500',
-  },
-  newSessionButton: {
-    backgroundColor: '#E01919',
-    paddingVertical: 18,
-    paddingHorizontal: 40,
-    borderRadius: 16, // Increased from 12 to 16 for more rounded
-    shadowColor: '#E01919',
-    shadowOffset: { width: 0, height: 4 }, // Softer shadow (was 6)
-    shadowOpacity: 0.2, // Softer shadow (was 0.25)
-    shadowRadius: 10, // Softer shadow (was 12)
-    elevation: 4, // Softer shadow (was 6)
-    minWidth: 240,
-    alignSelf: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: 0.3,
-  },
-});
 
 export default FinalCompletedScreen;

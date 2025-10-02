@@ -61,6 +61,7 @@
     "adult": "Adulto",
     "child": "Criança",
     "instruction": "Para começar, coloque o dispositivo na área afetada",
+    "insertDevice": "Insira o dispositivo fervix para começar",
     "treatmentSettings": "Configurações do Tratamento",
     "temperatureLabel": "Temperatura",
     "durationLabel": "Duração (minutos)",
@@ -76,7 +77,38 @@
     "howItWorks": "Como Funciona",
     "howItWorksDescription": "O dispositivo usa tecnologia avançada para fornecer tratamento preciso de acordo com protocolos médicos.",
     "safetyInfo": "Informações de Segurança",
-    "safetyInfoDescription": "Por favor, leia todas as instruções de segurança antes do uso. Consulte seu provedor de saúde se tiver alguma dúvida."
+    "safetyInfoDescription": "Por favor, leia todas as instruções de segurança antes do uso. Consulte seu provedor de saúde se tiver alguma dúvida.",
+    "steps": {
+      "heating": "Aquecimento",
+      "heatingDescription": "Aqueça o dispositivo",
+      "application": "Aplicação",
+      "applicationDescription": "A área alvo",
+      "cooling": "Resfriamento",
+      "coolingDescription": "Alguns minutos"
+    },
+    "tips": {
+      "title": "Dicas para uso ideal",
+      "tip1": "Certifique-se de que a pele esteja limpa e seca",
+      "tip2": "Use uma camada fina e uniforme",
+      "tip3": "Evite contato com os olhos"
+    },
+    "social": {
+      "instagram": "Instagram",
+      "youtube": "Tutorial",
+      "support": "Suporte"
+    },
+    "faq": {
+      "title": "FAQ",
+      "subtitle": "Perguntas Frequentes",
+      "question1": "Quanto tempo dura um tratamento?",
+      "answer1": "Uma sessão típica dura de 10 a 15 minutos, dependendo do perfil selecionado.",
+      "question2": "O dispositivo é seguro para crianças?",
+      "answer2": "Sim, o dispositivo possui um perfil infantil com intensidade reduzida para uso seguro.",
+      "question3": "Posso usar em pele sensível?",
+      "answer3": "Sim, ative o modo de pele sensível para configurações mais suaves.",
+      "question4": "Com que frequência posso usar o dispositivo?",
+      "answer4": "Siga as recomendações do seu profissional de saúde; normalmente, no máximo uma vez por dia."
+    }
   },
   "support": {
     "title": "Suporte",

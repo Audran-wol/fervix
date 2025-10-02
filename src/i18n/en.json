@@ -61,6 +61,7 @@
     "adult": "Adult",
     "child": "Child",
     "instruction": "To start, place the device on the affected area",
+    "insertDevice": "Insert fervix device to get started",
     "treatmentSettings": "Treatment Settings",
     "temperatureLabel": "Temperature",
     "durationLabel": "Duration (minutes)",
@@ -98,6 +99,7 @@
     },
     "faq": {
       "title": "FAQ",
+      "subtitle": "Frequently Asked Questions",
       "question1": "How long does a treatment take?",
       "answer1": "A typical treatment session takes 10-15 minutes depending on the selected profile.",
       "question2": "Is the device safe for children?",
