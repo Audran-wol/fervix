@@ -47,16 +47,15 @@ export const InfoScreen: React.FC = () => {
     // Section
     section: {
       backgroundColor: colors.card,
-      borderRadius: 24,
-      padding: 28,
+      borderRadius: 32,
+      padding: 32,
       marginBottom: 24,
       shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 4,
-      borderWidth: 1,
-      borderColor: colors.border,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.10,
+      shadowRadius: 16,
+      elevation: 6,
+      borderWidth: 0,
     },
     sectionTitle: {
       fontSize: 22,
@@ -71,21 +70,22 @@ export const InfoScreen: React.FC = () => {
     stepsContainer: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      paddingHorizontal: 8,
+      justifyContent: 'space-around',
+      paddingHorizontal: 16,
+      marginTop: 16,
     },
     step: {
       flex: 1,
       alignItems: 'center',
-      maxWidth: 100,
+      maxWidth: 110,
     },
     stepIcon: {
-      width: 70,
-      height: 70,
-      borderRadius: 35,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 16,
+      marginBottom: 12,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -93,8 +93,8 @@ export const InfoScreen: React.FC = () => {
       elevation: 2,
     },
     stepIconImage: {
-      width: 36,
-      height: 36,
+      width: 30,
+      height: 30,
     },
     heatingIcon: {
       backgroundColor: colors['primary-100'],
@@ -113,11 +113,12 @@ export const InfoScreen: React.FC = () => {
       textAlign: 'center',
     },
     stepDescription: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.textMuted,
       textAlign: 'center',
-      lineHeight: 16,
-      paddingHorizontal: 4,
+      lineHeight: 15,
+      paddingHorizontal: 2,
+      minHeight: 45,
     },
 
     // Connecting Lines
@@ -177,25 +178,25 @@ export const InfoScreen: React.FC = () => {
     socialCard: {
       flex: 1,
       backgroundColor: colors.card,
-      borderRadius: 16,
+      borderRadius: 24,
       padding: 20,
       alignItems: 'center',
       shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 6,
-      elevation: 2,
-      borderWidth: 1,
-      borderColor: colors.border,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 0,
+      minHeight: 100,
+      justifyContent: 'center',
     },
-    socialIcon: {
+    socialIconContainer: {
       width: 48,
       height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 12,
-    },
-    socialIconLarge: {
-      width: 52,
-      height: 52,
     },
     socialLabel: {
       fontSize: 13,
@@ -203,10 +204,9 @@ export const InfoScreen: React.FC = () => {
       color: colors.textPrimary,
       textAlign: 'center',
       alignSelf: 'stretch',
+      lineHeight: 16,
+      marginTop: 8,
     },
-    socialInstagram: {},
-    socialYoutube: {},
-    socialSupport: {},
 
     // FAQ
     faqSection: {
@@ -219,7 +219,7 @@ export const InfoScreen: React.FC = () => {
     faqTitle: {
       fontSize: 24,
       fontWeight: 'bold',
-      color: colors.textPrimary,
+      color: '#6B7280',
       marginBottom: 8,
       letterSpacing: 0.5,
       textAlign: 'center',
@@ -238,18 +238,17 @@ export const InfoScreen: React.FC = () => {
       borderRadius: 24,
       overflow: 'hidden',
       shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 3,
-      borderWidth: 1,
-      borderColor: colors.border,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+      borderWidth: 0,
     },
     faqItemExpanded: {
-      borderColor: colors.primary,
-      borderWidth: 2,
-      shadowOpacity: 0.12,
-      transform: [{ scale: 1.02 }],
+      backgroundColor: colors['primary-100'],
+      shadowOpacity: 0.10,
+      shadowRadius: 12,
+      elevation: 4,
     },
     faqQuestionRow: {
       flexDirection: 'row',
@@ -262,9 +261,13 @@ export const InfoScreen: React.FC = () => {
     },
     faqQuestion: {
       fontSize: 16,
-      fontWeight: '700',
+      fontWeight: '600',
       color: colors.textPrimary,
       lineHeight: 22,
+    },
+    faqQuestionExpanded: {
+      color: colors.primary,
+      fontWeight: '700',
     },
     faqChevron: {
       width: 32,
@@ -272,7 +275,6 @@ export const InfoScreen: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 16,
-      backgroundColor: colors['primary-100'],
     },
     faqDivider: {
       height: 1,
@@ -291,7 +293,7 @@ export const InfoScreen: React.FC = () => {
     },
 
     bottomSpacing: {
-      height: 24,
+      height: 80,
     },
   });
 
@@ -343,8 +345,8 @@ export const InfoScreen: React.FC = () => {
                     resizeMode="contain"
                   />
                 </View>
-                <Text style={styles.stepTitle}>{t('info.steps.heating')}</Text>
-                <Text style={styles.stepDescription}>{t('info.steps.heatingDescription')}</Text>
+                <Text style={styles.stepTitle} numberOfLines={1}>{t('info.steps.heating')}</Text>
+                <Text style={styles.stepDescription} numberOfLines={3}>{t('info.steps.heatingDescription')}</Text>
               </View>
 
               {/* Connecting Line */}
@@ -361,8 +363,8 @@ export const InfoScreen: React.FC = () => {
                     resizeMode="contain"
                   />
                 </View>
-                <Text style={styles.stepTitle}>{t('info.steps.application')}</Text>
-                <Text style={styles.stepDescription}>{t('info.steps.applicationDescription')}</Text>
+                <Text style={styles.stepTitle} numberOfLines={1}>{t('info.steps.application')}</Text>
+                <Text style={styles.stepDescription} numberOfLines={3}>{t('info.steps.applicationDescription')}</Text>
               </View>
 
               {/* Connecting Line */}
@@ -379,8 +381,8 @@ export const InfoScreen: React.FC = () => {
                     resizeMode="contain"
                   />
                 </View>
-                <Text style={styles.stepTitle}>{t('info.steps.cooling')}</Text>
-                <Text style={styles.stepDescription}>{t('info.steps.coolingDescription')}</Text>
+                <Text style={styles.stepTitle} numberOfLines={1}>{t('info.steps.cooling')}</Text>
+                <Text style={styles.stepDescription} numberOfLines={3}>{t('info.steps.coolingDescription')}</Text>
               </View>
             </View>
           </View>
@@ -413,12 +415,14 @@ export const InfoScreen: React.FC = () => {
                 onPress={() => handleSocialPress('instagram')}
                 activeOpacity={0.7}
               >
-                <Image 
-                  source={require('../../assets/images/socials/instagram.png')}
-                  style={[styles.socialIcon, styles.socialIconLarge]}
-                  resizeMode="contain"
-                />
-                <Text style={styles.socialLabel}>
+                <View style={[styles.socialIconContainer, { backgroundColor: '#E4405F' }]}>
+                  <Ionicons 
+                    name="logo-instagram" 
+                    size={24} 
+                    color="#FFFFFF" 
+                  />
+                </View>
+                <Text style={styles.socialLabel} numberOfLines={2}>
                   {t('info.social.instagram')}
                 </Text>
               </TouchableOpacity>
@@ -428,12 +432,14 @@ export const InfoScreen: React.FC = () => {
                 onPress={() => handleSocialPress('youtube')}
                 activeOpacity={0.7}
               >
-                <Image 
-                  source={require('../../assets/images/socials/youtube.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.socialLabel}>
+                <View style={[styles.socialIconContainer, { backgroundColor: '#FF0000' }]}>
+                  <Ionicons 
+                    name="logo-youtube" 
+                    size={24} 
+                    color="#FFFFFF" 
+                  />
+                </View>
+                <Text style={styles.socialLabel} numberOfLines={2}>
                   {t('info.social.youtube')}
                 </Text>
               </TouchableOpacity>
@@ -443,12 +449,14 @@ export const InfoScreen: React.FC = () => {
                 onPress={() => handleSocialPress('support')}
                 activeOpacity={0.7}
               >
-                <Image 
-                  source={require('../../assets/images/nav/support.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.socialLabel}>
+                <View style={[styles.socialIconContainer, { backgroundColor: colors.primary }]}>
+                  <Ionicons 
+                    name="help-circle" 
+                    size={24} 
+                    color="#FFFFFF" 
+                  />
+                </View>
+                <Text style={styles.socialLabel} numberOfLines={2}>
                   {t('info.social.support')}
                 </Text>
               </TouchableOpacity>
@@ -475,15 +483,24 @@ export const InfoScreen: React.FC = () => {
                 >
                   <View style={styles.faqQuestionRow}>
                     <View style={styles.faqQuestionContainer}>
-                      <Text style={styles.faqQuestion} numberOfLines={2}>
+                      <Text 
+                        style={[
+                          styles.faqQuestion,
+                          expandedFaq === index && styles.faqQuestionExpanded
+                        ]} 
+                        numberOfLines={2}
+                      >
                         {item.q}
                       </Text>
                     </View>
-                    <View style={styles.faqChevron}>
+                    <View style={[
+                      styles.faqChevron,
+                      { backgroundColor: expandedFaq === index ? colors.primary : colors['primary-100'] }
+                    ]}>
                       <Ionicons
                         name={expandedFaq === index ? 'chevron-up' : 'chevron-down'}
                         size={20}
-                        color={colors.primary}
+                        color={expandedFaq === index ? '#FFFFFF' : colors.primary}
                       />
                     </View>
                   </View>

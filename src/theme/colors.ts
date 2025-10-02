@@ -1,8 +1,8 @@
 // Light theme colors
 const lightColors = {
   // Primary colors
-  primary: '#E01919',
-  'primary-100': '#FFE5E5',
+  primary: '#E85A5A',
+  'primary-100': '#FDF2F2',
 
   // Design tokens
   cardBlue: '#BFC9E3',
@@ -64,8 +64,8 @@ const lightColors = {
 // Dark theme colors
 const darkColors = {
   // Primary colors
-  primary: '#E01919',
-  'primary-100': '#4D0606',
+  primary: '#E85A5A',
+  'primary-100': '#4A2B2B',
 
   // Design tokens
   cardBlue: '#2C3E5A',

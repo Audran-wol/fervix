@@ -50,12 +50,7 @@ export const TreatmentScreen: React.FC = () => {
 
   useEffect(() => {
     Animated.timing(screenFill, { toValue: 1, duration: DURATION_MS, easing: Easing.linear, useNativeDriver: false }).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.03, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1,    duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ])
-    ).start();
+    // Removed pulse animation for the circle
 
     const startedAt = Date.now();
     const tick = setInterval(() => {
@@ -127,7 +122,7 @@ export const TreatmentScreen: React.FC = () => {
       justifyContent: 'center',
       backgroundColor: colors.card,
       borderWidth: 3,
-      borderColor: colors.primary,
+      borderColor: '#000000',
       borderRadius: 22,
       shadowColor: '#000',
       shadowOpacity: 0.18,
@@ -149,8 +144,8 @@ export const TreatmentScreen: React.FC = () => {
       fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-thin' }),
     },
 
-    titleWrap: { position: 'absolute', bottom: 100, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
-    title: { fontSize: 28, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' },
+    titleWrap: { position: 'absolute', bottom: 198, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
+    title: { fontSize: 24, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' },
   });
 
   return (
@@ -165,8 +160,8 @@ export const TreatmentScreen: React.FC = () => {
       </SafeAreaView>
 
       <View style={s.cardWrap}>
-        {/* Apply the pulse scale INLINE to avoid the invariant error */}
-        <Animated.View style={[s.card, { transform: [{ scale: pulse }] }]}>
+        {/* Circle without pulse animation */}
+        <View style={s.card}>
           {/* PHONE — centered X, higher Y, tilted right */}
           <View style={s.phone}>
             <View style={s.phoneNotch} />
@@ -181,7 +176,7 @@ export const TreatmentScreen: React.FC = () => {
             style={s.hand}
             onLayout={(e) => setHandLayout(e.nativeEvent.layout)}
           />
-        </Animated.View>
+        </View>
       </View>
 
       <View style={s.titleWrap}>

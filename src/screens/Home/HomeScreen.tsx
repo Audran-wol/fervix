@@ -74,7 +74,6 @@ export const HomeScreen: React.FC = () => {
     sensIcon: {
       width: 80,
       height: 80,
-      tintColor: colors.primary,
     },
 
     /* Insert Device Card */
@@ -238,7 +237,10 @@ export const HomeScreen: React.FC = () => {
             leftIcon={
               <Image
                 source={require('../../assets/images/icons/sensitive2.png')}
-                style={styles.sensIcon}
+                style={[
+                  styles.sensIcon,
+                  { tintColor: sensitive ? colors.primary : '#9CA3AF' }
+                ]}
                 resizeMode="contain"
               />
             }

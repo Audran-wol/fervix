@@ -26,7 +26,7 @@ export const HeatingScreen: React.FC = () => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? colors.surface : '#FFFFFF',
+      backgroundColor: '#FFD700', // Strong yellow background
     },
     backButton: {
       position: 'absolute',
@@ -75,9 +75,9 @@ export const HeatingScreen: React.FC = () => {
       backgroundColor: '#FCD34D', // Yellow filling color
     },
     iconContainer: {
-      width: 250,
-      height: 250,
-      borderRadius: 125,
+      width: 320,
+      height: 320,
+      borderRadius: 160,
       backgroundColor: colors.card,
       alignItems: 'center',
       justifyContent: 'center',
@@ -89,13 +89,13 @@ export const HeatingScreen: React.FC = () => {
       elevation: 10,
     },
   heatIcon: {
-    width: 120,
-    height: 120,
-    tintColor: '#6B7280',
+    width: 200,
+    height: 200,
+    // Remove tintColor to keep original yellow color
   },
     titleContainer: {
       position: 'absolute',
-      bottom: 100,
+      bottom: 160,
       left: 0,
       right: 0,
       alignItems: 'center',
@@ -108,58 +108,117 @@ export const HeatingScreen: React.FC = () => {
       textAlign: 'center',
       marginTop: 10,
     },
+    subtitle: {
+      fontSize: 18,
+      fontWeight: 'normal',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginTop: 8,
+      opacity: 0.8,
+    },
   });
   
   // Animation values
   const fillAnimation = useRef(new Animated.Value(0)).current;
-  const iconPulse = useRef(new Animated.Value(1)).current;
-  const iconRotate = useRef(new Animated.Value(0)).current;
+  const iconShakeX = useRef(new Animated.Value(0)).current;
+  const iconShakeY = useRef(new Animated.Value(0)).current;
 
-    const circleSize = Math.max(screenWidth, screenHeight) * 4.2; // Increased from 3.5 to 4.2
+  const circleSize = Math.max(screenWidth, screenHeight) * 4.2;
 
   useEffect(() => {
     // Start filling animation (slower)
     Animated.timing(fillAnimation, {
       toValue: 1,
-      duration: 15000, // Increased from 8000 to 15000 (slower)
+      duration: 15000,
       easing: Easing.out(Easing.quad),
       useNativeDriver: false,
     }).start();
 
-    // Start icon pulse animation (gentle, no shaking)
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(iconPulse, {
-          toValue: 1.05,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(iconPulse, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+    // Create shaking animation for heating effect - only on the icon
+    const shakeAnimation = () => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(iconShakeX, {
+              toValue: 3,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(iconShakeY, {
+              toValue: -2,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(iconShakeX, {
+              toValue: -3,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(iconShakeY, {
+              toValue: 2,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(iconShakeX, {
+              toValue: 2,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(iconShakeY, {
+              toValue: -1,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(iconShakeX, {
+              toValue: -2,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(iconShakeY, {
+              toValue: 1,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(iconShakeX, {
+              toValue: 0,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(iconShakeY, {
+              toValue: 0,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+          ]),
+        ])
+      ).start();
+    };
 
-    // Remove icon rotation animation - keep icon static
+    // Start shaking animation
+    shakeAnimation();
 
-      // Update progress
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(progressInterval);
-            // Use setTimeout to navigate outside of setState
-            setTimeout(() => {
-              navigation.navigate('Treatment' as never);
-            }, 100);
-            return 100;
-          }
-          return prev + 1;
-        });
-      }, 150); // Slower progress update to match animation
+    // Update progress
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          // Use setTimeout to navigate outside of setState
+          setTimeout(() => {
+            navigation.navigate('Treatment' as never);
+          }, 100);
+          return 100;
+        }
+        return prev + 1;
+      });
+    }, 150);
 
     return () => {
       clearInterval(progressInterval);
@@ -170,8 +229,6 @@ export const HeatingScreen: React.FC = () => {
     inputRange: [0, 1],
     outputRange: [0, circleSize],
   });
-
-    // Removed rotation interpolation - icon is now static
 
   return (
     <View style={styles.container}>
@@ -209,29 +266,31 @@ export const HeatingScreen: React.FC = () => {
             />
           </Animated.View>
           
-            {/* Static Heat Icon in Center */}
+          {/* Heat Icon in Center - Circle stays still */}
+          <View style={styles.iconContainer}>
+            {/* Only the heat waves icon shakes, not the container */}
             <Animated.View
-              style={[
-                styles.iconContainer,
-                {
-                  transform: [
-                    { scale: iconPulse },
-                  ],
-                }
-              ]}
+              style={{
+                transform: [
+                  { translateX: iconShakeX },
+                  { translateY: iconShakeY },
+                ],
+              }}
             >
               <Image
-                source={require('../../assets/images/icons/ic_heat.png')}
+                source={require('../../assets/images/icons/heat_waves.png')}
                 style={styles.heatIcon}
                 resizeMode="contain"
               />
             </Animated.View>
+          </View>
         </View>
       </View>
 
         {/* Title Below Circle - Direct on background */}
         <View style={styles.titleContainer}>
           <Text style={styles.title}>{t('heating.heating')}</Text>
+          <Text style={styles.subtitle}>do not apply yet</Text>
         </View>
     </View>
   );
