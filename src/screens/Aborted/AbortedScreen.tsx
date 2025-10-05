@@ -75,44 +75,42 @@ export const AbortedScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Treatment Aborted</Text>
+        <Text style={styles.title}>{t('aborted.title')}</Text>
         
         <FvCard style={styles.card}>
           <View style={styles.errorContainer}>
             <Text style={styles.errorIcon}>⚠</Text>
-            <Text style={styles.errorText}>Treatment Stopped</Text>
+            <Text style={styles.errorText}>{t('aborted.stopped')}</Text>
             <Text style={styles.errorSubtext}>
-              The treatment was stopped before completion.
+              {t('aborted.stoppedDescription')}
             </Text>
           </View>
         </FvCard>
 
         <FvCard style={styles.card}>
-          <Text style={styles.cardTitle}>Reason</Text>
+          <Text style={styles.cardTitle}>{t('aborted.reason')}</Text>
           <Text style={styles.cardText}>
-            Treatment was manually stopped by the user.
+            {t('aborted.reasonDescription')}
           </Text>
         </FvCard>
 
         <FvCard style={styles.card}>
-          <Text style={styles.cardTitle}>What to do next</Text>
+          <Text style={styles.cardTitle}>{t('aborted.nextSteps')}</Text>
           <Text style={styles.cardText}>
-            • Check the device for any issues{'\n'}
-            • Contact support if needed{'\n'}
-            • You can restart treatment when ready
+            {t('aborted.nextStepsDescription')}
           </Text>
         </FvCard>
 
         <View style={styles.buttonContainer}>
           <FvButton
-            title="Restart Treatment"
+            title={t('buttons.restartTreatment')}
             onPress={() => {
               // Restart treatment
             }}
             style={styles.button}
           />
           <FvButton
-            title="Return to Home"
+            title={t('buttons.returnHome')}
             onPress={() => {
               // Navigate to home
             }}

@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { colors, typography } from '../../theme';
+import { useTheme } from '../../theme/useTheme';
 import * as Haptics from 'expo-haptics';
 
 interface ProfileCardProps {
@@ -29,6 +30,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   style,
   isChild = false,
 }) => {
+  const { colors: themeColors, isDark } = useTheme();
   const scale = React.useRef(new Animated.Value(1)).current;
   const iconScale = React.useRef(new Animated.Value(1)).current;
   const iconRotation = React.useRef(new Animated.Value(0)).current;
@@ -61,12 +63,32 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     onPress();
   };
 
+  const dynamicStyles = StyleSheet.create({
+    card: {
+      height: CARD_HEIGHT,
+      backgroundColor: isDark ? themeColors.card : '#FFFFFF',
+      borderRadius: 24,
+      borderWidth: isDark ? 0 : 1,
+      borderColor: isDark ? 'transparent' : '#E3E6F2',
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 10,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      shadowColor: '#101828',
+      shadowOpacity: 0.10,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+  });
+
   return (
     <Animated.View style={[{ transform: [{ scale }] }, style]}>
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.85}
-        style={[styles.card, selected && styles.cardSelected]}
+        style={[dynamicStyles.card, selected && styles.cardSelected]}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         accessibilityLabel={`${label} profile`}
@@ -89,14 +111,18 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
           >
             <Image 
               source={iconSource} 
-              style={[styles.icon, isChild && styles.childIcon]} 
+              style={[
+                styles.icon, 
+                isChild && styles.childIcon,
+                selected && styles.iconSelected
+              ]} 
               resizeMode="contain" 
             />
           </Animated.View>
         </View>
 
         {/* LABEL (very small gap) */}
-        <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
+        <Text style={[styles.label, selected && styles.labelSelected, { color: isDark ? themeColors.textPrimary : colors.textPrimary }]}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -108,7 +134,7 @@ const CARD_HEIGHT = 220;
 const styles = StyleSheet.create({
   card: {
     height: CARD_HEIGHT,
-    backgroundColor: colors.cardBlue,
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#E3E6F2',
@@ -151,7 +177,7 @@ const styles = StyleSheet.create({
   icon: {
     width: 160,
     height: 160,
-    tintColor: colors['gray-600'],    // keep same color even when selected
+    tintColor: '#9CA3AF',    // same color as sensitive2.png when inactive
   },
   
   // Much bigger icon for child only
@@ -160,13 +186,17 @@ const styles = StyleSheet.create({
     height: 200,
   },
 
+  // White icon when selected (on red background)
+  iconSelected: {
+    tintColor: '#FFFFFF',
+  },
+
   // Smaller text under icon
   label: {
     ...typography.textStyles.title,
     fontSize: 16,
     lineHeight: 20,
     fontWeight: '600',
-    color: colors.textPrimary,
     marginTop: 2,                     // very close to icon
   },
 

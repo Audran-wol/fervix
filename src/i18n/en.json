@@ -20,6 +20,7 @@
     "resume": "Resume"
   },
   "navigation": {
+    "home": "Home",
     "start": "Start",
     "info": "Info",
     "support": "Support",
@@ -61,7 +62,8 @@
     "adult": "Adult",
     "child": "Child",
     "instruction": "To start, place the device on the affected area",
-    "insertDevice": "Insert fervix device to get started",
+    "insertDevice": "Insert Fervix Device",
+    "deviceConnected": "Device Connected",
     "treatmentSettings": "Treatment Settings",
     "temperatureLabel": "Temperature",
     "durationLabel": "Duration (minutes)",
@@ -141,11 +143,16 @@
     "theme": "Theme",
     "themeDescription": "Choose light or dark theme",
     "about": "About",
-    "version": "Version 1.0.0"
+    "version": "Version 1.0.0",
+    "deviceActivation": "Device Activation",
+    "deviceActivationDescription": "Access QR code to activate your Fervix device for the first time.",
+    "qrCodeScreen": "QR Code Screen",
+    "qrCodeInstruction": "To activate device for first time, scan the QR code"
   },
   "heating": {
     "title": "Heating Phase",
-    "heating": "Heating...",
+    "heating": "Heating",
+    "doNotApplyYet": "Do not apply yet",
     "status": "Status",
     "statusDescription": "Device is heating up to the required temperature. Please wait...",
     "progress": "Heating Progress"
@@ -153,6 +160,7 @@
   "cooling": {
     "title": "Cooling Phase",
     "cooling": "Cooling down",
+    "safelyRemove": "You can safely remove the device",
     "status": "Status",
     "statusDescription": "Device is cooling down to safe temperature. Please wait...",
     "progress": "Cooling Progress"
@@ -160,6 +168,7 @@
   "treatment": {
     "title": "Treatment in Progress",
     "active": "Treatment in progress",
+    "completed": "Treatment completed",
     "details": "Treatment Details",
     "detailsDescription": "Treatment is currently in progress. Please remain still and follow the instructions.",
     "progress": "Treatment Progress",

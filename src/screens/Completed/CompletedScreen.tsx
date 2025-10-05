@@ -3,10 +3,12 @@ import { View, Text, StyleSheet } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../theme/useTheme';
 
 export const CompletedScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
   const animationRef = useRef<LottieView>(null);
 
   useEffect(() => {
@@ -21,42 +23,61 @@ export const CompletedScreen: React.FC = () => {
     return () => clearTimeout(timer);
   }, [navigation]);
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
+    },
+    completedText: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: isDark ? colors.textPrimary : '#374151',
+      textAlign: 'center',
+    },
+  });
+
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       <View style={styles.content}>
-        <LottieView
-          ref={animationRef}
-          source={require('../../assets/lotties/success_check.json.json')}
-          style={styles.successAnimation}
-          autoPlay
-          loop={false}
-        />
-        <Text style={styles.completedText}>Completed</Text>
+        <View style={styles.circleCard}>
+          <LottieView
+            ref={animationRef}
+            source={require('../../assets/lotties/success_check.json.json')}
+            style={styles.successAnimation}
+            autoPlay
+            loop={false}
+          />
+        </View>
+        <Text style={dynamicStyles.completedText}>{t('completed.title')}</Text>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  successAnimation: {
-    width: 300,
-    height: 300,
+  circleCard: {
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 24,
+    elevation: 12,
     marginBottom: 20,
   },
-  completedText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#374151',
-    textAlign: 'center',
+  successAnimation: {
+    width: '80%',
+    aspectRatio: 1,
   },
 });
 

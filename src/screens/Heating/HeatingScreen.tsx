@@ -9,6 +9,7 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -26,24 +27,8 @@ export const HeatingScreen: React.FC = () => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#FFD700', // Strong yellow background
-    },
-    backButton: {
-      position: 'absolute',
-      top: 50,
-      left: 20,
-      width: 50,
-      height: 50,
-      borderRadius: 25,
-      backgroundColor: colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-      zIndex: 10,
+      width: '100%',
+      height: '100%',
     },
     fullScreenContainer: {
       position: 'absolute',
@@ -56,7 +41,7 @@ export const HeatingScreen: React.FC = () => {
       paddingHorizontal: 20,
     },
     circle: {
-      backgroundColor: colors.surface,
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
       alignItems: 'center',
       justifyContent: 'center',
       position: 'relative',
@@ -72,13 +57,13 @@ export const HeatingScreen: React.FC = () => {
       position: 'absolute',
       bottom: 0,
       left: 0,
-      backgroundColor: '#FCD34D', // Yellow filling color
+      backgroundColor: '#ff6400', // Orange filling color
     },
     iconContainer: {
-      width: 320,
-      height: 320,
-      borderRadius: 160,
-      backgroundColor: colors.card,
+      width: 280,
+      height: 280,
+      borderRadius: 140,
+      backgroundColor: '#FFFFFF',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 2,
@@ -89,41 +74,53 @@ export const HeatingScreen: React.FC = () => {
       elevation: 10,
     },
   heatIcon: {
-    width: 200,
-    height: 200,
+    width: 180,
+    height: 180,
     // Remove tintColor to keep original yellow color
   },
     titleContainer: {
       position: 'absolute',
-      bottom: 160,
+      bottom: 180,
       left: 0,
       right: 0,
       alignItems: 'center',
       zIndex: 10,
     },
     title: {
-      fontSize: 28,
+      fontSize: 22,
       fontWeight: 'bold',
       color: colors.textPrimary,
       textAlign: 'center',
       marginTop: 10,
     },
     subtitle: {
-      fontSize: 18,
-      fontWeight: 'normal',
+      fontSize: 16,
+      fontWeight: 'bold',
       color: colors.textPrimary,
       textAlign: 'center',
-      marginTop: 8,
+      marginTop: 4,
       opacity: 0.8,
+    },
+    beeContainer: {
+      position: 'absolute',
+      left: 40,
+      top: '30%',
+      zIndex: 5,
+    },
+    bee: {
+      width: 60,
+      height: 60,
+      tintColor: '#000000',
     },
   });
   
   // Animation values
   const fillAnimation = useRef(new Animated.Value(0)).current;
-  const iconShakeX = useRef(new Animated.Value(0)).current;
-  const iconShakeY = useRef(new Animated.Value(0)).current;
+  const waveAnimation = useRef(new Animated.Value(0)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const beeAnimation = useRef(new Animated.Value(0)).current;
 
-  const circleSize = Math.max(screenWidth, screenHeight) * 4.2;
+  const circleSize = Math.max(screenWidth, screenHeight) * 1.9;
 
   useEffect(() => {
     // Start filling animation (slower)
@@ -134,76 +131,72 @@ export const HeatingScreen: React.FC = () => {
       useNativeDriver: false,
     }).start();
 
-    // Create shaking animation for heating effect - only on the icon
-    const shakeAnimation = () => {
+    // Create wave animation for heating effect
+    const waveAnimationLoop = () => {
       Animated.loop(
         Animated.sequence([
-          Animated.parallel([
-            Animated.timing(iconShakeX, {
-              toValue: 3,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-            Animated.timing(iconShakeY, {
-              toValue: -2,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.parallel([
-            Animated.timing(iconShakeX, {
-              toValue: -3,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-            Animated.timing(iconShakeY, {
-              toValue: 2,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.parallel([
-            Animated.timing(iconShakeX, {
-              toValue: 2,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-            Animated.timing(iconShakeY, {
-              toValue: -1,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.parallel([
-            Animated.timing(iconShakeX, {
-              toValue: -2,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-            Animated.timing(iconShakeY, {
-              toValue: 1,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.parallel([
-            Animated.timing(iconShakeX, {
-              toValue: 0,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-            Animated.timing(iconShakeY, {
-              toValue: 0,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-          ]),
+          Animated.timing(waveAnimation, {
+            toValue: 1,
+            duration: 2000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(waveAnimation, {
+            toValue: 0,
+            duration: 2000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
         ])
       ).start();
     };
 
-    // Start shaking animation
-    shakeAnimation();
+    // Create overlay animation for movement effect
+    const overlayAnimationLoop = () => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(overlayOpacity, {
+            toValue: 0.3,
+            duration: 1500,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(overlayOpacity, {
+            toValue: 0,
+            duration: 1500,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
+
+    // Start wave animations
+    waveAnimationLoop();
+    overlayAnimationLoop();
+
+    // Create bee flight animation
+    const beeFlightAnimation = () => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(beeAnimation, {
+            toValue: 1,
+            duration: 3000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(beeAnimation, {
+            toValue: 0,
+            duration: 3000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
+
+    // Start bee animation
+    beeFlightAnimation();
 
     // Update progress
     const progressInterval = setInterval(() => {
@@ -231,14 +224,36 @@ export const HeatingScreen: React.FC = () => {
   });
 
   return (
-    <View style={styles.container}>
-      {/* Back Button - Top Left */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
+    <View style={[styles.container, { backgroundColor: '#ff6400' }]}>
+
+      {/* Flying Bee - Left Side */}
+      <Animated.View
+        style={[
+          styles.beeContainer,
+          {
+            transform: [
+              {
+                translateY: beeAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -20],
+                }),
+              },
+              {
+                rotate: beeAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '5deg'],
+                }),
+              },
+            ],
+          },
+        ]}
       >
-        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
+        <Image
+          source={require('../../assets/images/icons/insect.png')}
+          style={styles.bee}
+          resizeMode="contain"
+        />
+      </Animated.View>
 
       {/* Full Screen Circle - Takes entire screen */}
       <View style={styles.fullScreenContainer}>
@@ -268,12 +283,22 @@ export const HeatingScreen: React.FC = () => {
           
           {/* Heat Icon in Center - Circle stays still */}
           <View style={styles.iconContainer}>
-            {/* Only the heat waves icon shakes, not the container */}
+            {/* Heat waves icon with wave animation */}
             <Animated.View
               style={{
                 transform: [
-                  { translateX: iconShakeX },
-                  { translateY: iconShakeY },
+                  { 
+                    scale: waveAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.1],
+                    })
+                  },
+                  { 
+                    rotate: waveAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '5deg'],
+                    })
+                  },
                 ],
               }}
             >
@@ -283,6 +308,20 @@ export const HeatingScreen: React.FC = () => {
                 resizeMode="contain"
               />
             </Animated.View>
+            
+            {/* White overlay for movement effect */}
+            <Animated.View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: 140,
+                opacity: overlayOpacity,
+              }}
+            />
           </View>
         </View>
       </View>
@@ -290,7 +329,7 @@ export const HeatingScreen: React.FC = () => {
         {/* Title Below Circle - Direct on background */}
         <View style={styles.titleContainer}>
           <Text style={styles.title}>{t('heating.heating')}</Text>
-          <Text style={styles.subtitle}>do not apply yet</Text>
+          <Text style={styles.subtitle}>{t('heating.doNotApplyYet')}</Text>
         </View>
     </View>
   );

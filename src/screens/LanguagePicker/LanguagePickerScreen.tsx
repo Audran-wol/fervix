@@ -43,7 +43,7 @@ export const LanguagePickerScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Select Language</Text>
+        <Text style={styles.title}>{t('languagePicker.title')}</Text>
         
         <FvCard style={styles.card}>
           <FlatList

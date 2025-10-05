@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -13,58 +13,26 @@ export const FinalCompletedScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const animationRef = useRef<LottieView>(null);
 
-  const styles = StyleSheet.create({
-    /* Screen */
+  useEffect(() => {
+    animationRef.current?.play();
+  }, []);
+
+  const s = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: isDark ? colors.surface : '#FFFFFF',
     },
 
-    /* >>> New background (pure Views, whisper-soft) */
-    backgroundContainer: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 1,
-    },
-    baseWhite: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: isDark ? colors.surface : '#FFFFFF',
-    },
-    glow: {
-      position: 'absolute',
-      borderRadius: 9999,
-      // For Android, simulate softness via larger size + lower opacity (no blur needed)
-    },
-    glowTopRight: {
-      width: 420,
-      height: 420,
-      right: -140,
-      top: -120,
-      backgroundColor: 'rgba(224, 25, 25, 0.10)', // brand red (very light)
-    },
-    glowCenterWhite: {
-      width: 360,
-      height: 360,
-      left: '50%',
-      top: '28%',
-      marginLeft: -180,
-      backgroundColor: isDark ? colors.surface : '#FFFFFF', // keeps center bright
-    },
-    glowBottomRight: {
-      width: 520,
-      height: 420,
-      right: -220,
-      bottom: -160,
-      backgroundColor: 'rgba(230, 242, 255, 0.28)', // cool whisper tint
-    },
-    glowBottomLeft: {
-      width: 380,
-      height: 380,
-      left: -140,
-      bottom: -100,
-      backgroundColor: 'rgba(16, 185, 129, 0.08)', // soft green accent
-    },
+    // Background glows (kept from your version)
+    backgroundContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
+    baseWhite: { ...StyleSheet.absoluteFillObject, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
+    glow: { position: 'absolute', borderRadius: 9999 },
+    glowTopRight: { width: 420, height: 420, right: -140, top: -120, backgroundColor: 'rgba(224, 25, 25, 0.10)' },
+    glowCenterWhite: { width: 360, height: 360, left: '50%', top: '28%', marginLeft: -180, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
+    glowBottomRight: { width: 520, height: 420, right: -220, bottom: -160, backgroundColor: 'rgba(230, 242, 255, 0.28)' },
+    glowBottomLeft: { width: 380, height: 380, left: -140, bottom: -100, backgroundColor: 'rgba(16, 185, 129, 0.08)' },
 
-    /* Back button (unchanged) */
+    // Back button
     backButton: {
       position: 'absolute',
       top: 50,
@@ -83,133 +51,82 @@ export const FinalCompletedScreen: React.FC = () => {
       zIndex: 10,
     },
 
-    /* Content (improved layout) */
+    // Content
     content: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 32,
       paddingVertical: 60,
-      paddingBottom: 100, // Add more bottom padding to avoid navbar
+      paddingBottom: 100,
       zIndex: 10,
     },
-    successContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 40, // Add space between content and button
-    },
-    successAnimation: {
+
+    // Circular card that masks the Lottie (like your photo)
+    circleCard: {
       width: 280,
       height: 280,
-      marginBottom: 24,
-    },
-    completedText: {
-      fontSize: 36,
-      fontWeight: 'bold',
-      color: colors.textPrimary,
-      textAlign: 'center',
-      marginBottom: 12,
-      letterSpacing: -0.5,
-    },
-    subtitleText: {
-      fontSize: 16,
-      color: colors.textMuted,
-      textAlign: 'center',
-      marginBottom: 40,
-      fontWeight: '500',
-    },
-    newSessionButton: {
-      backgroundColor: colors.primary,
-      paddingVertical: 20,
-      paddingHorizontal: 48,
-      borderRadius: 20, // More rounded for modern look
+      borderRadius: 140,
+      backgroundColor: '#FFFFFF',
+      overflow: 'hidden', // mask Lottie to a perfect circle
+      alignItems: 'center',
+      justifyContent: 'center',
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 6,
-      minWidth: 280,
-      alignSelf: 'center',
-      marginTop: 20, // Add margin from content above
+      shadowOpacity: 0.18,
+      shadowOffset: { width: 0, height: 12 },
+      shadowRadius: 24,
+      elevation: 12,
     },
-    buttonText: {
-      color: '#FFFFFF',
+
+    // Lottie inside the inner plate
+    successAnimation: {
+      width: '80%',
+      aspectRatio: 1,
+    },
+
+    // Small caption
+    caption: {
+      marginTop: 14,
       fontSize: 18,
-      fontWeight: '700',
+      fontWeight: Platform.select({ ios: '600' as any, android: '600' as any }) as any,
+      color: isDark ? colors.textPrimary : '#8A8F98',
       textAlign: 'center',
-      letterSpacing: 0.5,
+      letterSpacing: 0.2,
     },
   });
 
   useEffect(() => {
-    animationRef.current?.play();
-  }, []);
+    // Auto-redirect to home screen after 10 seconds
+    const timer = setTimeout(() => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' } as never],
+      });
+    }, 10000);
 
-  const handleStartNewSession = () => {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'MainTabs' } as never],
-    });
-  };
+    return () => clearTimeout(timer);
+  }, [navigation]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Upgraded subtle background (no new libs) */}
-      <View style={styles.backgroundContainer}>
-        {/* Base white sheet */}
-        <View style={styles.baseWhite} />
-
-        {/* Top-right brand glow */}
-        <View style={[styles.glow, styles.glowTopRight]} />
-
-        {/* Center soft lift (keeps content bright) */}
-        <View style={[styles.glow, styles.glowCenterWhite]} />
-
-        {/* Bottom-right cool tint */}
-        <View style={[styles.glow, styles.glowBottomRight]} />
-
-        {/* Bottom-left accent glow */}
-        <View style={[styles.glow, styles.glowBottomLeft]} />
-      </View>
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() =>
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'MainTabs' } as never],
-          })
-        }
-      >
-        <Ionicons name="arrow-back" size={24} color="#374151" />
-      </TouchableOpacity>
-
-      <View style={styles.content}>
-        <View style={styles.successContainer}>
-          {/* ⬇️ keep your Lottie exactly */}
+    <View style={s.container}>
+      {/* Content */}
+      <View style={s.content}>
+        <View style={s.circleCard}>
           <LottieView
             ref={animationRef}
             source={require('../../assets/lotties/success_check.json.json')}
-            style={styles.successAnimation}
+            style={s.successAnimation}
             autoPlay
             loop={false}
           />
-          <Text style={styles.completedText}>{t('completed.title')}</Text>
-          <Text style={styles.subtitleText}>{t('completed.successDescription')}</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.newSessionButton}
-          onPress={handleStartNewSession}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.buttonText}>{t('buttons.startNewSession')}</Text>
-        </TouchableOpacity>
+        <Text style={s.caption}>
+          {t('treatment.completed')}
+        </Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
-
 
 export default FinalCompletedScreen;

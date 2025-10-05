@@ -20,6 +20,7 @@
     "resume": "Fortsetzen"
   },
   "navigation": {
+    "home": "Startseite",
     "start": "Start",
     "info": "Info",
     "support": "Support",
@@ -61,7 +62,8 @@
     "adult": "Erwachsener",
     "child": "Kind",
     "instruction": "Zum Starten das Gerät auf den betroffenen Bereich legen",
-    "insertDevice": "Fervix-Gerät einstecken zum Starten",
+    "insertDevice": "Fervix-Gerät einstecken",
+    "deviceConnected": "Gerät verbunden",
     "treatmentSettings": "Behandlungseinstellungen",
     "temperatureLabel": "Temperatur",
     "durationLabel": "Dauer (Minuten)",
@@ -142,11 +144,16 @@
     "theme": "Design",
     "themeDescription": "Helles oder dunkles Design wählen",
     "about": "Über",
-    "version": "Version 1.0.0"
+    "version": "Version 1.0.0",
+    "deviceActivation": "Geräteaktivierung",
+    "deviceActivationDescription": "QR-Code zugreifen, um Ihr Fervix-Gerät zum ersten Mal zu aktivieren.",
+    "qrCodeScreen": "QR-Code-Bildschirm",
+    "qrCodeInstruction": "Um das Gerät zum ersten Mal zu aktivieren, scannen Sie den QR-Code"
   },
   "heating": {
     "title": "Aufheizphase",
-    "heating": "Aufheizen...",
+    "heating": "Aufheizen",
+    "doNotApplyYet": "Noch nicht anwenden",
     "status": "Status",
     "statusDescription": "Das Gerät wird auf die erforderliche Temperatur aufgeheizt. Bitte warten...",
     "cancel": "Abbrechen"
@@ -154,6 +161,7 @@
   "cooling": {
     "title": "Abkühlungsphase",
     "cooling": "Abkühlen",
+    "safelyRemove": "Sie können das Gerät sicher entfernen",
     "status": "Status",
     "statusDescription": "Das Gerät kühlt auf eine sichere Temperatur ab. Bitte warten...",
     "progress": "Abkühlungsfortschritt"
@@ -161,6 +169,7 @@
   "treatment": {
     "title": "Behandlung läuft",
     "active": "Behandlung aktiv",
+    "completed": "Behandlung abgeschlossen",
     "details": "Behandlungsdetails",
     "detailsDescription": "Die Behandlung läuft derzeit. Bitte bleiben Sie ruhig und befolgen Sie die Anweisungen.",
     "pause": "Pausieren",

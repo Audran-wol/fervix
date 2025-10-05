@@ -18,6 +18,7 @@ import CoolingScreen from '../screens/cooling/CoolingScreen';
 import FinalCompletedScreen from '../screens/FinalCompleted/FinalCompletedScreen';
 import AbortedScreen from '../screens/Aborted/AbortedScreen';
 import LanguagePickerScreen from '../screens/LanguagePicker/LanguagePickerScreen';
+import QRCodeScreen from '../screens/QRCode/QRCodeScreen';
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -28,6 +29,7 @@ export type RootStackParamList = {
   FinalCompleted: undefined;
   Aborted: undefined;
   LanguagePicker: undefined;
+  QRCode: undefined;
 };
 
 export type MainTabParamList = {
@@ -50,49 +52,47 @@ const MainTabNavigator = () => {
           screenOptions={{
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: isDark ? colors.surface : '#FFFFFF',
+              backgroundColor: isDark ? colors.card : '#eceff3',
               borderTopWidth: 0,
               height: 64,
-              paddingBottom: 8,
-              paddingTop: 8,
+              paddingBottom: 4,
+              paddingTop: 0,
               borderTopLeftRadius: 0,
               borderTopRightRadius: 0,
               elevation: 0,
               shadowOpacity: 0,
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 0,
             },
             tabBarActiveTintColor: colors.primary,
-            tabBarInactiveTintColor: isDark ? colors.textMuted : '#4B5563',
+            tabBarInactiveTintColor: isDark ? '#9CA3AF' : '#9CA3AF',
             tabBarLabelStyle: {
               fontSize: 12,
-              fontFamily: 'Roboto-Medium',
-              color: isDark ? colors.textMuted : '#4B5563',
+              fontFamily: 'Roboto-Bold',
+              color: isDark ? '#9CA3AF' : '#9CA3AF',
+              marginTop: -1,
+              marginBottom: 15,
             },
             tabBarIconStyle: {
               fontSize: 22,
             },
           }}
         >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarLabel: t('navigation.start'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-        }}
-      />
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            tabBarLabel: t('navigation.home'),
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home-outline" size={size} color={color} />
+            ),
+          }}
+        />
       <Tab.Screen
         name="Info"
         component={InfoScreen}
         options={{
           tabBarLabel: t('navigation.info'),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="information-circle" size={size} color={color} />
+            <Ionicons name="information-circle-outline" size={size} color={color} />
           ),
         }}
       />
@@ -102,7 +102,7 @@ const MainTabNavigator = () => {
         options={{
           tabBarLabel: t('navigation.support'),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="mail" size={size} color={color} />
+            <Ionicons name="mail-outline" size={size} color={color} />
           ),
         }}
       />
@@ -112,7 +112,7 @@ const MainTabNavigator = () => {
         options={{
           tabBarLabel: t('navigation.settings'),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
+            <Ionicons name="settings-outline" size={size} color={color} />
           ),
         }}
       />
@@ -142,6 +142,7 @@ export const RootNavigator = () => {
         <Stack.Screen name="Cooling" component={CoolingScreen} />
         <Stack.Screen name="Aborted" component={AbortedScreen} />
         <Stack.Screen name="LanguagePicker" component={LanguagePickerScreen} />
+        <Stack.Screen name="QRCode" component={QRCodeScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

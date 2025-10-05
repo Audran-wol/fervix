@@ -18,70 +18,88 @@ export const TreatmentScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
 
   const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000));
-  const screenFill = useRef(new Animated.Value(0)).current; // 0..1
-  const pulse = useRef(new Animated.Value(1)).current;      // scale
-
+  const screenFill = useRef(new Animated.Value(0)).current;
   const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
 
-  // ===== TUNING KNOBS =========================================================
-  const CARD = Math.min(W, H) * 0.70;      // circle
+  // === Sizing (unchanged) =====================================================
+  const CARD = Math.min(W, H) * 0.70;
 
-  // Hand: LOWER so device stays visible
-  const HAND_SCALE   = 0.85;
-  const HAND_RIGHT   = -CARD * 0.01;
-  const HAND_BOTTOM  = CARD * 0.005;        // ↓ lower than before (was 0.06)
-
-  // Phone size & pose
-  const PHONE_W = CARD * 0.4;
+  // Phone (UNCHANGED math)
+  const PHONE_W = CARD * 0.38;
   const PHONE_H = PHONE_W * 1.90;
-  const PHONE_TILT_DEG = 0.8;               // tilt to the RIGHT
-  const PHONE_CENTER_SHIFT_X = CARD * 0.17;// tiny right shift so it looks centered
+  const PHONE_TILT_DEG = 0.8;
+  const PHONE_CENTER_SHIFT_X = CARD * 0.01;
 
-  // Snap to device: we only use Y (vertical) so phone stays horizontally centered
-  const PLUG_REL_Y = 0.42;                 // 0..1 from top-left of hand PNG
+  const PLUG_REL_Y = 0.42;
   const PLUG_OFFSET_Y = 7;
+  const CONNECTOR_ADJUST_Y = 10;
+  const MAX_PEEK_OUT_TOP = -CARD * 0.30;
 
-  // More top peek (more negative = higher)
-  const MAX_PEEK_OUT_TOP = -CARD * 0.30;   // allow more phone above circle
-
-  // Slight tuck into device
-  const CONNECTOR_ADJUST_Y = -6;
+   // Hand (only thing we reposition)
+   const HAND_SCALE = 0.92;
+   const HAND_LEFT  = CARD * 0.10;  // arm enters from LEFT, hidden by mask
+   const HAND_TOP   = CARD * 0.05;   // hand sits higher in the circle
   // ===========================================================================
 
   useEffect(() => {
-    Animated.timing(screenFill, { toValue: 1, duration: DURATION_MS, easing: Easing.linear, useNativeDriver: false }).start();
-    // Removed pulse animation for the circle
+    Animated.timing(screenFill, {
+      toValue: 1,
+      duration: DURATION_MS,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    }).start();
 
     const startedAt = Date.now();
-    const tick = setInterval(() => {
+    let tick: NodeJS.Timeout | null = null;
+    let navigationTimeout: NodeJS.Timeout | null = null;
+
+    tick = setInterval(() => {
       const elapsed = Date.now() - startedAt;
       const left = Math.max(0, Math.ceil((DURATION_MS - elapsed) / 1000));
       setCountdown(left);
       if (left <= 0) {
-        clearInterval(tick);
-        setTimeout(() => navigation.navigate('Completed' as never), 400);
+        if (tick) {
+          clearInterval(tick);
+          tick = null;
+        }
+        navigationTimeout = setTimeout(() => {
+          navigation.navigate('Completed' as never);
+        }, 400);
       }
     }, 200);
-    return () => clearInterval(tick);
+
+    return () => {
+      if (tick) {
+        clearInterval(tick);
+      }
+      if (navigationTimeout) {
+        clearTimeout(navigationTimeout);
+      }
+    };
   }, []);
 
-  const screenFillHeight = screenFill.interpolate({ inputRange: [0, 1], outputRange: [0, H] });
+  const screenFillHeight = screenFill.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, H],
+  });
 
-  // Phone centered horizontally; vertically snapped to sit just over the device
+  // Phone position (keep same math)
   const PHONE_LEFT = (CARD - PHONE_W) / 2 + PHONE_CENTER_SHIFT_X;
-  let PHONE_TOP = (CARD - PHONE_H) / 2; // fallback
-
+  let PHONE_TOP = (CARD - PHONE_H) / 2;
   if (handLayout) {
     const plugY = handLayout.y + handLayout.height * PLUG_REL_Y + PLUG_OFFSET_Y;
     let top = plugY - PHONE_H + CONNECTOR_ADJUST_Y;
-    if (top < MAX_PEEK_OUT_TOP) top = MAX_PEEK_OUT_TOP; // only top edge outside
+    if (top < MAX_PEEK_OUT_TOP) top = MAX_PEEK_OUT_TOP;
     PHONE_TOP = top;
   }
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
 
-    risingFill: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.info, zIndex: 0 },
+    risingFill: {
+      position: 'absolute', left: 0, right: 0, bottom: 0,
+      backgroundColor: '#6fc7b4', zIndex: 0,
+    },
 
     safe: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3 },
     back: {
@@ -93,25 +111,34 @@ export const TreatmentScreen: React.FC = () => {
 
     cardWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
 
-    card: {
+    // Outer circle container (no clipping, so phone can peek above)
+    cardOuter: {
       width: CARD, height: CARD, borderRadius: CARD / 2,
-      backgroundColor: colors.card,
-      overflow: 'visible', // allow the phone’s top to peek out
+      backgroundColor: '#FFFFFF',
+      overflow: 'visible',
       alignItems: 'center', justifyContent: 'center',
       shadowColor: '#000', shadowOpacity: 0.22, shadowOffset: { width: 0, height: 18 },
       shadowRadius: 36, elevation: 16,
+    },
+
+    // Inner mask (same size/shape) — ONLY the hand goes inside here
+    circleMask: {
+      position: 'absolute', left: 0, top: 0, width: CARD, height: CARD,
+      borderRadius: CARD / 2, overflow: 'hidden',
+      alignItems: 'center', justifyContent: 'center',
     },
 
     hand: {
       position: 'absolute',
       width: CARD * HAND_SCALE,
       height: CARD * HAND_SCALE,
-      right: HAND_RIGHT,
-      bottom: HAND_BOTTOM,
+      left: HAND_LEFT,
+      top: HAND_TOP,
       resizeMode: 'contain',
-      zIndex: 1, // behind phone
+      zIndex: 1,
     },
 
+    // Phone sits ABOVE the mask, so it can overlay at the top like before
     phone: {
       position: 'absolute',
       left: PHONE_LEFT,
@@ -129,53 +156,50 @@ export const TreatmentScreen: React.FC = () => {
       shadowOffset: { width: 0, height: 5 },
       shadowRadius: 8,
       elevation: 5,
-      transform: [{ rotate: `${PHONE_TILT_DEG}deg` }], // static string OK
+      transform: [{ rotate: `${PHONE_TILT_DEG}deg` }],
       zIndex: 2,
     },
+
     phoneNotch: {
       position: 'absolute',
       top: 6, width: '36%', height: 10,
       borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
       backgroundColor: colors.textPrimary,
     },
+
     countdown: {
       fontSize: 50, fontWeight: '300', color: colors.textPrimary,
       includeFontPadding: false, textAlignVertical: 'center', letterSpacing: -2,
       fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-thin' }),
     },
 
-    titleWrap: { position: 'absolute', bottom: 198, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
-    title: { fontSize: 24, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' },
+    titleWrap: { position: 'absolute', bottom: 220, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
+    title: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' },
   });
 
   return (
     <View style={s.container}>
-      {/* Rising blue fill — animated height inline */}
       <Animated.View pointerEvents="none" style={[s.risingFill, { height: screenFillHeight }]} />
 
-      <SafeAreaView style={s.safe} edges={['top']}>
-        <TouchableOpacity style={s.back} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#0B1B2B" />
-        </TouchableOpacity>
-      </SafeAreaView>
 
       <View style={s.cardWrap}>
-        {/* Circle without pulse animation */}
-        <View style={s.card}>
-          {/* PHONE — centered X, higher Y, tilted right */}
+        <View style={s.cardOuter}>
+          {/* Hand is clipped by mask */}
+          <View style={s.circleMask}>
+            <Image
+              source={require('../../assets/images/icons/hand_now4.png')}
+              style={s.hand}
+              onLayout={(e) => setHandLayout(e.nativeEvent.layout)}
+            />
+          </View>
+
+          {/* Phone overlays above circle like before */}
           <View style={s.phone}>
             <View style={s.phoneNotch} />
             <Text numberOfLines={1} adjustsFontSizeToFit style={s.countdown}>
               {countdown}
             </Text>
           </View>
-
-          {/* HAND — lower so device is fully visible */}
-          <Image
-            source={require('../../assets/images/icons/hand_only.png')}
-            style={s.hand}
-            onLayout={(e) => setHandLayout(e.nativeEvent.layout)}
-          />
         </View>
       </View>
 

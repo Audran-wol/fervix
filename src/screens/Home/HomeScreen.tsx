@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,34 +26,35 @@ export const HomeScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const { profile, setProfile } = useSessionStore();
   const { sensitive, setSensitive } = useSettingsStore();
+  const [showDeviceImage, setShowDeviceImage] = useState(false);
+  const [deviceConnected, setDeviceConnected] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
     scroll: { flex: 1 },
-    content: { paddingHorizontal: 16, paddingBottom: 24, gap: 16 },
+    // remove global gap here – it was adding extra space between logo and cards
+    content: { paddingHorizontal: 16, paddingBottom: 24 },
 
-    /* AppBar */
+    /* AppBar / Logo */
     appBar: {
       alignItems: 'center',
-      justifyContent: 'flex-end',
+      justifyContent: 'center',
       backgroundColor: isDark ? colors.surface : '#FFFFFF',
+      paddingTop: Math.max(insets.top,5), // bring logo down a little
+      paddingBottom: 0,                    // no bottom padding (kills the gap)
+      marginBottom: -30,                     // reduce margin bottom
     },
-    logoText: {
-      fontSize: 36,
-      fontWeight: 'bold',
-      color: colors.primary,
-      letterSpacing: 2,
-      textAlign: 'center',
-    },
-    appBarDivider: {
-      position: 'absolute',
-      bottom: 0, left: 0, right: 0,
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: '#E5E7EB',
+    logoImage: {
+      width: 390,
+      height: 130,
+      alignSelf: 'center',
+      resizeMode: 'contain',
+      marginLeft: 13,
     },
 
     /* Grid */
-    grid: { flexDirection: 'row', columnGap: 16, marginTop: 12 },
+    grid: { flexDirection: 'row', columnGap: 16, marginTop: 4 }, // nudge closer to the logo
     gridItem: { flex: 1, minHeight: 220 },
 
     /* Sensitive card (soft; no dark borders) */
@@ -68,6 +69,7 @@ export const HomeScreen: React.FC = () => {
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 8 },
       elevation: 6,
+      marginTop: 14,
     },
 
     /* Clean Sensitive icon - no card */
@@ -79,26 +81,27 @@ export const HomeScreen: React.FC = () => {
     /* Insert Device Card */
     insertDeviceCard: {
       backgroundColor: '#E3F2FD',
-      borderRadius: 40,
+      borderRadius: 32,
       borderWidth: 0,
-      paddingHorizontal: 28,
-      paddingVertical: 28,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
       shadowColor: '#000',
       shadowOpacity: 0.08,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 6 },
       elevation: 5,
-      minHeight: 100,
-      marginBottom: 24,
+      minHeight: 70,
+      marginTop: 12,
+      marginBottom: 12,
       justifyContent: 'center',
       alignItems: 'center',
     },
     insertDeviceText: {
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: 'bold',
       color: '#6B7280',
       textAlign: 'center',
-      lineHeight: 28,
+      lineHeight: 24,
     },
     instructionText: {
       ...typography.textStyles.body,
@@ -117,8 +120,8 @@ export const HomeScreen: React.FC = () => {
       position: 'relative',
       paddingVertical: 12,
     },
-    illustration: { 
-      width: 200, 
+    illustration: {
+      width: 200,
       height: 200,
     },
 
@@ -138,46 +141,33 @@ export const HomeScreen: React.FC = () => {
     /* Hint */
     pulseHint: { marginTop: 8, fontSize: 12, color: colors.textMuted },
 
-    /* Warm-up Button */
-    warmupButton: {
-      backgroundColor: colors.primary,
-      borderRadius: 32,
-      paddingVertical: 18,
-      paddingHorizontal: 24,
-      flexDirection: 'row',
+    /* Device Image Display */
+    deviceImageContainer: {
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 16,
-      elevation: 8,
-      gap: 12,
+      marginTop: 4,
+      paddingVertical: 8,
     },
-    warmupIconContainer: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      alignItems: 'center',
-      justifyContent: 'center',
+    deviceImage: {
+      width: 160,
+      height: 160,
+      resizeMode: 'contain',
     },
-    warmupIcon: {
-      width: 20,
-      height: 20,
-      tintColor: '#FFFFFF',
-    },
-    warmupButtonText: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: '#FFFFFF',
-      letterSpacing: 0.5,
+    deviceImagePulse: {
+      position: 'absolute',
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: colors['primary-100'],
+      borderWidth: 2,
+      borderColor: 'rgba(224,25,25,0.2)',
     },
   });
 
   // Animations (bobbing + pulse-from-below)
   const bob = useRef(new Animated.Value(0)).current;
   const pulsePhase = useRef(new Animated.Value(0)).current;
+  const deviceImagePulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -199,17 +189,43 @@ export const HomeScreen: React.FC = () => {
   const pulseScale = pulsePhase.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.6] });
   const pulseOpacity = pulsePhase.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.45, 0] });
 
+  // Handle device insertion click
+  const handleDeviceInsertion = () => {
+    setShowDeviceImage(true);
+    setDeviceConnected(true);
+
+    // Simple fade in animation for the image
+    Animated.timing(deviceImagePulse, {
+      toValue: 1,
+      duration: 500,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+
+    // Hide image after 3 seconds and navigate
+    setTimeout(() => {
+      setShowDeviceImage(false);
+      setDeviceConnected(false);
+      deviceImagePulse.setValue(0);
+      navigation.navigate('Heating' as never);
+    }, 3000);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* AppBar / Text Logo */}
-        <View style={[styles.appBar, { paddingTop: insets.top + 8, height: 96 }]}>
-          <Text style={styles.logoText}>FERVIX</Text>
-          <View style={styles.appBarDivider} />
+        {/* AppBar / Logo */}
+        <View style={styles.appBar}>
+          <Image
+            // keep your original asset name: fervix_logo
+            source={require('../../assets/images/logos/fervix_logo.png')}
+            style={styles.logoImage}
+          />
         </View>
 
         {/* Profile grid */}
@@ -239,7 +255,7 @@ export const HomeScreen: React.FC = () => {
                 source={require('../../assets/images/icons/sensitive2.png')}
                 style={[
                   styles.sensIcon,
-                  { tintColor: sensitive ? colors.primary : '#9CA3AF' }
+                  { tintColor: sensitive ? colors.primary : '#9CA3AF' },
                 ]}
                 resizeMode="contain"
               />
@@ -250,52 +266,48 @@ export const HomeScreen: React.FC = () => {
           />
         </View>
 
-
-        {/* Warm-up Button */}
+        {/* Insert Device Instruction - Clickable */}
         <TouchableOpacity 
-          style={styles.warmupButton}
-          onPress={() => navigation.navigate('Heating' as never)}
+          style={styles.insertDeviceCard}
+          onPress={handleDeviceInsertion}
           activeOpacity={0.8}
         >
-          <View style={styles.warmupIconContainer}>
-            <Image
-              source={require('../../assets/images/icons/ic_heat.png')}
-              style={styles.warmupIcon}
+        <Text style={styles.insertDeviceText}>
+          {deviceConnected ? t('start.deviceConnected') : t('start.insertDevice')}
+        </Text>
+        </TouchableOpacity>
+
+        {/* Device Image Display */}
+        {showDeviceImage && (
+          <View style={styles.deviceImageContainer}>
+            <Animated.Image
+              source={require('../../assets/images/illustrations/phone_over_wrist.png')}
+              style={[
+                styles.deviceImage,
+                {
+                  opacity: deviceImagePulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1],
+                  }),
+                  transform: [
+                    {
+                      scale: deviceImagePulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.warmupButtonText}>{t('buttons.startTreatment')}</Text>
-        </TouchableOpacity>
+        )}
 
-        {/* Insert Device Instruction */}
-        <View style={styles.insertDeviceCard}>
-          <Text style={styles.insertDeviceText}>
-            {t('start.insertDevice')}
-          </Text>
-        </View>
-
-        {/* Illustration (commented out) */}
-        {/* <View style={styles.illustrationWrap}>
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.pulse,
-              { opacity: pulseOpacity, transform: [{ translateY: pulseTranslateY }, { scale: pulseScale }] },
-            ]}
-          />
-          <Animated.Image
-            source={require('../../assets/images/illustrations/phone_over_wrist.png')}
-            style={[styles.illustration, { transform: [{ translateY: bobTranslate }] }]}
-            resizeMode="contain"
-          />
-          <Text style={styles.pulseHint}>Connect the device to begin</Text>
-        </View> */}
-
-        <View style={{ height: 28 }} />
+        <View style={{ height: 80 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
-
 
 export default HomeScreen;

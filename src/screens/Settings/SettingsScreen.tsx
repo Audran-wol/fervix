@@ -1,14 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme';
 import { useSettingsStore } from '../../state/useSettingsStore';
 import { changeLanguage } from '../../i18n';
 import { FvToggle, FvCard } from '../../components';
 import { LanguageDropdown } from '../../components/ui';
+import { Ionicons } from '@expo/vector-icons';
 
 export const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation();
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const {
@@ -71,6 +74,22 @@ export const SettingsScreen: React.FC = () => {
       flex: 1,
       color: colors.textPrimary,
     },
+    qrButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+    qrButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 8,
+    },
   });
 
   return (
@@ -115,6 +134,21 @@ export const SettingsScreen: React.FC = () => {
             selectedLanguage={language}
             onLanguageChange={setLanguage}
           />
+        </FvCard>
+
+        <FvCard style={styles.card}>
+          <Text style={styles.cardTitle}>{t('settings.deviceActivation')}</Text>
+          <Text style={styles.cardText}>
+            {t('settings.deviceActivationDescription')}
+          </Text>
+          <TouchableOpacity
+            style={styles.qrButton}
+            onPress={() => navigation.navigate('QRCode' as never)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="qr-code-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.qrButtonText}>{t('settings.qrCodeScreen')}</Text>
+          </TouchableOpacity>
         </FvCard>
       </ScrollView>
     </SafeAreaView>

@@ -9,6 +9,7 @@ import {
   Dimensions,
   Image,
   InteractionManager,
+  LayoutRectangle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
@@ -16,148 +17,148 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/useTheme';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const DURATION = 10_000; // 10s
+const { width: W, height: H } = Dimensions.get('window');
+const DURATION_MS = 10_000; // 10s
 
 export const CoolingScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
 
-  const [countdown, setCountdown] = useState(Math.floor(DURATION / 1000));
+  const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000));
+  const screenFill = useRef(new Animated.Value(0)).current;
+  const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
 
-  const styles = StyleSheet.create({
+  // === Sizing (same as treatment screen) =====================================================
+  const CARD = Math.min(W, H) * 0.70;
+
+  // Phone (same as treatment screen)
+  const PHONE_W = CARD * 0.38;
+  const PHONE_H = PHONE_W * 1.90;
+  const PHONE_TILT_DEG = 0.8;
+  const PHONE_CENTER_SHIFT_X = CARD * 0.01;
+
+  const PLUG_REL_Y = 0.42;
+  const PLUG_OFFSET_Y = 7;
+  const CONNECTOR_ADJUST_Y = -110;
+  const MAX_PEEK_OUT_TOP = -CARD * 0.30;
+
+  // Hand (same as treatment screen)
+  const HAND_SCALE = 0.92;
+  const HAND_LEFT  = CARD * 0.05;
+  const HAND_TOP   = CARD * 0.35;
+
+  const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
-    safeTop: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-    backButton: {
-      marginTop: 8,
-      marginLeft: 20,
-      width: 50,
-      height: 50,
-      borderRadius: 25,
-      backgroundColor: colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+
+    risingFill: {
+      position: 'absolute', left: 0, right: 0, bottom: 0,
+      backgroundColor: '#3B82F6', zIndex: 0,
     },
 
-    centerWrap: {
+    safe: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3 },
+    back: {
+      marginTop: 4, marginLeft: 16, width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center',
+      shadowColor: '#000', shadowOpacity: 0.15, shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 6, elevation: 3,
+    },
+
+    cardWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+
+    // Outer circle container (no clipping, so phone can peek above)
+    cardOuter: {
+      width: CARD, height: CARD, borderRadius: CARD / 2,
+      backgroundColor: '#FFFFFF',
+      overflow: 'visible',
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: '#000', shadowOpacity: 0.22, shadowOffset: { width: 0, height: 18 },
+      shadowRadius: 36, elevation: 16,
+    },
+
+    // Inner mask (same size/shape) — ONLY the hand goes inside here
+    circleMask: {
+      position: 'absolute', left: 0, top: 0, width: CARD, height: CARD,
+      borderRadius: CARD / 2, overflow: 'hidden',
+      alignItems: 'center', justifyContent: 'center',
+    },
+
+    hand: {
       position: 'absolute',
-      inset: 0 as any,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 20,
-    },
-    circle: {
-      backgroundColor: colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      shadowColor: '#000',
-      shadowOpacity: 0.22,
-      shadowOffset: { width: 0, height: 18 },
-      shadowRadius: 36,
-      elevation: 16,
+      width: CARD * HAND_SCALE,
+      height: CARD * HAND_SCALE,
+      left: HAND_LEFT,
+      top: HAND_TOP,
+      resizeMode: 'contain',
+      zIndex: 1,
     },
 
-    fillMask: { position: 'absolute', bottom: 0, left: 0, overflow: 'hidden' },
-    fill: {
+    // Phone sits ABOVE the mask, so it can overlay at the top like before
+    phone: {
       position: 'absolute',
-      bottom: 0,
-      left: 0,
-      backgroundColor: '#3B82F6',
-    },
-
-    iconContainer: {
-      width: 250,
-      height: 250,
-      borderRadius: 125,
-      backgroundColor: colors.card,
+      left: (CARD - PHONE_W) / 2 + PHONE_CENTER_SHIFT_X,
+      top: (CARD - PHONE_H) / 2,
+      width: PHONE_W,
+      height: PHONE_H,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: colors.card,
+      borderWidth: 3,
+      borderColor: '#000000',
+      borderRadius: 22,
+      shadowColor: '#000',
+      shadowOpacity: 0.18,
+      shadowOffset: { width: 0, height: 5 },
+      shadowRadius: 8,
+      elevation: 5,
+      transform: [{ rotate: `${PHONE_TILT_DEG}deg` }],
       zIndex: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.25,
-      shadowRadius: 20,
-      elevation: 10,
     },
-    coolIcon: { 
-    width: 120, 
-    height: 120, 
-    tintColor: '#3B82F6',
-  },
-    countdownText: {
-      marginTop: 6,
-      fontSize: 40,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      letterSpacing: -0.5,
+    phoneNotch: {
+      position: 'absolute',
+      top: 6, width: '36%', height: 10,
+      borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
+      backgroundColor: colors.textPrimary,
+    },
+    countdown: {
+      fontSize: 50, fontWeight: '300', color: colors.textPrimary,
+      includeFontPadding: false, textAlignVertical: 'center', letterSpacing: -2,
     },
 
-    titleContainer: {
-      position: 'absolute',
-      bottom: 100,
-      left: 0,
-      right: 0,
-      alignItems: 'center',
-      zIndex: 10,
-    },
-    title: {
-      fontSize: 28,
+    titleWrap: { position: 'absolute', bottom: 198, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
+    title: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' },
+    subtitle: {
+      fontSize: 16,
       fontWeight: 'bold',
       color: colors.textPrimary,
       textAlign: 'center',
-      marginTop: 10,
+      marginTop: 8,
+      opacity: 0.8,
     },
   });
 
-  // Animations - EXACTLY like treatment screen
-  const fillAnim = useRef(new Animated.Value(0)).current; // 0 -> 1 (like treatment)
-  const iconPulse = useRef(new Animated.Value(1)).current;
-
-  const circleSize = Math.max(screenWidth, screenHeight) * 3.5;
-
   useEffect(() => {
-    // Fill animation - EXACTLY like treatment screen
-    Animated.timing(fillAnim, {
+    Animated.timing(screenFill, {
       toValue: 1,
-      duration: DURATION,
+      duration: DURATION_MS,
       easing: Easing.linear,
       useNativeDriver: false,
     }).start();
 
-    // Icon pulse animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(iconPulse, {
-          toValue: 1.05,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(iconPulse, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Countdown - EXACTLY like treatment screen
     const startedAt = Date.now();
-    const tick = setInterval(() => {
+    let tick: NodeJS.Timeout | null = null;
+    let navigationTimeout: NodeJS.Timeout | null = null;
+
+    tick = setInterval(() => {
       const elapsed = Date.now() - startedAt;
-      const left = Math.max(0, Math.ceil((DURATION - elapsed) / 1000));
+      const left = Math.max(0, Math.ceil((DURATION_MS - elapsed) / 1000));
       setCountdown(left);
       if (left <= 0) {
-        clearInterval(tick);
-        setTimeout(() => {
+        if (tick) {
+          clearInterval(tick);
+          tick = null;
+        }
+        navigationTimeout = setTimeout(() => {
           navigation.dispatch(
             CommonActions.reset({
               index: 0,
@@ -176,47 +177,60 @@ export const CoolingScreen: React.FC = () => {
       }
     }, 200);
 
-    return () => clearInterval(tick);
+    return () => {
+      if (tick) {
+        clearInterval(tick);
+      }
+      if (navigationTimeout) {
+        clearTimeout(navigationTimeout);
+      }
+    };
   }, []);
 
-  // EMPTYING animation: fillAnim goes 0->1, but we want height to go circleSize->0
-  const fillHeight = fillAnim.interpolate({
+  const screenFillHeight = screenFill.interpolate({
     inputRange: [0, 1],
-    outputRange: [circleSize, 0], // Reversed: starts full, empties down
+    outputRange: [H, 0],
   });
 
-  return (
-    <View style={styles.container}>
-      {/* Back */}
-      <SafeAreaView style={styles.safeTop} edges={['top']}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </SafeAreaView>
+  // Phone position (keep same math)
+  const PHONE_LEFT = (CARD - PHONE_W) / 2 + PHONE_CENTER_SHIFT_X;
+  let PHONE_TOP = (CARD - PHONE_H) / 2;
+  if (handLayout) {
+    const plugY = handLayout.y + handLayout.height * PLUG_REL_Y + PLUG_OFFSET_Y;
+    let top = plugY - PHONE_H + CONNECTOR_ADJUST_Y;
+    if (top < MAX_PEEK_OUT_TOP) top = MAX_PEEK_OUT_TOP;
+    PHONE_TOP = top;
+  }
 
-      {/* Big circle */}
-      <View style={styles.centerWrap}>
-        <View style={[styles.circle, { width: circleSize, height: circleSize, borderRadius: circleSize / 2 }]}>
-          {/* Blue fill starts full and empties DOWN over 10s */}
-          <View style={[styles.fillMask, { width: circleSize, height: circleSize, borderRadius: circleSize / 2 }]}>
-            <Animated.View style={[styles.fill, { width: circleSize, height: fillHeight }]} />
+  return (
+    <View style={s.container}>
+      <Animated.View pointerEvents="none" style={[s.risingFill, { height: screenFillHeight }]} />
+
+
+      <View style={s.cardWrap}>
+        <View style={s.cardOuter}>
+          {/* Hand is clipped by mask */}
+          <View style={s.circleMask}>
+            <Image
+              source={require('../../assets/images/icons/cool_hand.png')}
+              style={s.hand}
+              onLayout={(e) => setHandLayout(e.nativeEvent.layout)}
+            />
           </View>
 
-          {/* Cooling icon + countdown */}
-          <Animated.View style={[styles.iconContainer, { transform: [{ scale: iconPulse }] }]}>
-            <Image
-              source={require('../../assets/images/icons/cool_down.png')}
-              style={styles.coolIcon}
-              resizeMode="contain"
-            />
-            <Text style={styles.countdownText}>{countdown}</Text>
-          </Animated.View>
+          {/* Phone overlays above circle like before */}
+          <View style={[s.phone, { left: PHONE_LEFT, top: PHONE_TOP }]}>
+            <View style={s.phoneNotch} />
+            <Text numberOfLines={1} adjustsFontSizeToFit style={s.countdown}>
+              {countdown}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* Title */}
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>{t('cooling.cooling')}</Text>
+      <View style={s.titleWrap}>
+        <Text style={s.title}>{t('cooling.cooling')}</Text>
+        <Text style={s.subtitle}>{t('cooling.safelyRemove')}</Text>
       </View>
     </View>
   );

@@ -20,6 +20,7 @@
     "resume": "Retomar"
   },
   "navigation": {
+    "home": "Início",
     "start": "Início",
     "info": "Info",
     "support": "Suporte",
@@ -61,7 +62,8 @@
     "adult": "Adulto",
     "child": "Criança",
     "instruction": "Para começar, coloque o dispositivo na área afetada",
-    "insertDevice": "Insira o dispositivo fervix para começar",
+    "insertDevice": "Inserir Dispositivo Fervix",
+    "deviceConnected": "Dispositivo Conectado",
     "treatmentSettings": "Configurações do Tratamento",
     "temperatureLabel": "Temperatura",
     "durationLabel": "Duração (minutos)",
@@ -142,11 +144,16 @@
     "theme": "Tema",
     "themeDescription": "Escolher tema claro ou escuro",
     "about": "Sobre",
-    "version": "Versão 1.0.0"
+    "version": "Versão 1.0.0",
+    "deviceActivation": "Ativação do Dispositivo",
+    "deviceActivationDescription": "Acesse o código QR para ativar seu dispositivo Fervix pela primeira vez.",
+    "qrCodeScreen": "Tela do Código QR",
+    "qrCodeInstruction": "Para ativar o dispositivo pela primeira vez, escaneie o código QR"
   },
   "heating": {
     "title": "Fase de Aquecimento",
-    "heating": "Aquecendo...",
+    "heating": "Aquecendo",
+    "doNotApplyYet": "Ainda não aplicar",
     "status": "Status",
     "statusDescription": "O dispositivo está aquecendo até a temperatura necessária. Por favor, aguarde...",
     "cancel": "Cancelar"
@@ -154,6 +161,7 @@
   "cooling": {
     "title": "Fase de Resfriamento",
     "cooling": "Resfriando",
+    "safelyRemove": "Você pode remover o dispositivo com segurança",
     "status": "Status",
     "statusDescription": "O dispositivo está resfriando para uma temperatura segura. Por favor, aguarde...",
     "progress": "Progresso do Resfriamento"
@@ -161,6 +169,7 @@
   "treatment": {
     "title": "Tratamento em Andamento",
     "active": "Tratamento em andamento",
+    "completed": "Tratamento concluído",
     "details": "Detalhes do Tratamento",
     "detailsDescription": "O tratamento está atualmente em andamento. Por favor, permaneça imóvel e siga as instruções.",
     "pause": "Pausar",
