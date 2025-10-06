@@ -80,7 +80,7 @@ export const HomeScreen: React.FC = () => {
 
     /* Insert Device Card */
     insertDeviceCard: {
-      backgroundColor: '#E3F2FD',
+      backgroundColor: '#D1D5DB',
       borderRadius: 32,
       borderWidth: 0,
       paddingHorizontal: 20,
@@ -149,8 +149,8 @@ export const HomeScreen: React.FC = () => {
       paddingVertical: 8,
     },
     deviceImage: {
-      width: 160,
-      height: 160,
+      width: 280,
+      height: 280,
       resizeMode: 'contain',
     },
     deviceImagePulse: {
@@ -168,6 +168,7 @@ export const HomeScreen: React.FC = () => {
   const bob = useRef(new Animated.Value(0)).current;
   const pulsePhase = useRef(new Animated.Value(0)).current;
   const deviceImagePulse = useRef(new Animated.Value(0)).current;
+  const deviceImageImpulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -180,7 +181,15 @@ export const HomeScreen: React.FC = () => {
     Animated.loop(
       Animated.timing(pulsePhase, { toValue: 1, duration: 1400, easing: Easing.out(Easing.quad), useNativeDriver: true })
     ).start();
-  }, [bob, pulsePhase]);
+
+    // Device image impulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(deviceImageImpulse, { toValue: 1.05, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(deviceImageImpulse, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+  }, [bob, pulsePhase, deviceImageImpulse]);
 
   const bobTranslate = bob.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] });
 
@@ -232,7 +241,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.grid}>
           <ProfileCard
             label={t('start.child')}
-            iconSource={require('../../assets/images/icons/ic_child.png')}
+            iconSource={require('../../assets/images/icons/new_child.png')}
             selected={profile === 'child'}
             onPress={() => setProfile('child')}
             style={styles.gridItem}
@@ -252,7 +261,7 @@ export const HomeScreen: React.FC = () => {
           <SettingToggleRow
             leftIcon={
               <Image
-                source={require('../../assets/images/icons/sensitive2.png')}
+                source={require('../../assets/images/icons/new_sensitive.png')}
                 style={[
                   styles.sensIcon,
                   { tintColor: sensitive ? colors.primary : '#9CA3AF' },
@@ -281,7 +290,7 @@ export const HomeScreen: React.FC = () => {
         {showDeviceImage && (
           <View style={styles.deviceImageContainer}>
             <Animated.Image
-              source={require('../../assets/images/illustrations/phone_over_wrist.png')}
+              source={require('../../assets/images/icons/phone_wrist.png')}
               style={[
                 styles.deviceImage,
                 {
@@ -296,7 +305,13 @@ export const HomeScreen: React.FC = () => {
                         outputRange: [0.8, 1],
                       }),
                     },
-                  ],
+                  ].concat(
+                    showDeviceImage ? [
+                      {
+                        scale: deviceImageImpulse,
+                      },
+                    ] : []
+                  ),
                 },
               ]}
               resizeMode="contain"

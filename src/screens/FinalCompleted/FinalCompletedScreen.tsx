@@ -72,10 +72,10 @@ export const FinalCompletedScreen: React.FC = () => {
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: '#000',
-      shadowOpacity: 0.18,
-      shadowOffset: { width: 0, height: 12 },
-      shadowRadius: 24,
-      elevation: 12,
+      shadowOpacity: 0.22,
+      shadowOffset: { width: 0, height: 18 },
+      shadowRadius: 36,
+      elevation: 16,
     },
 
     // Lottie inside the inner plate
@@ -87,11 +87,21 @@ export const FinalCompletedScreen: React.FC = () => {
     // Small caption
     caption: {
       marginTop: 14,
-      fontSize: 18,
-      fontWeight: Platform.select({ ios: '600' as any, android: '600' as any }) as any,
-      color: isDark ? colors.textPrimary : '#8A8F98',
+      fontSize: 22,
+      fontWeight: Platform.select({ ios: '700' as any, android: '700' as any }) as any,
+      color: isDark ? colors.textPrimary : '#374151',
       textAlign: 'center',
       letterSpacing: 0.2,
+    },
+
+    // Subtitle
+    subtitle: {
+      marginTop: 8,
+      fontSize: 16,
+      fontWeight: Platform.select({ ios: '500' as any, android: '500' as any }) as any,
+      color: isDark ? colors.textMuted : '#6B7280',
+      textAlign: 'center',
+      letterSpacing: 0.1,
     },
   });
 
@@ -123,6 +133,10 @@ export const FinalCompletedScreen: React.FC = () => {
 
         <Text style={s.caption}>
           {t('treatment.completed')}
+        </Text>
+
+        <Text style={s.subtitle}>
+          You can now start a new treatment
         </Text>
       </View>
     </View>

@@ -9,6 +9,7 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -101,16 +102,20 @@ export const HeatingScreen: React.FC = () => {
       marginTop: 4,
       opacity: 0.8,
     },
-    beeContainer: {
+    thermometerContainer: {
       position: 'absolute',
       left: 40,
       top: '30%',
       zIndex: 5,
+      display: 'none', // Hide the side thermometer
     },
-    bee: {
-      width: 60,
-      height: 60,
-      tintColor: '#000000',
+    thermometer: {
+      width: 100,
+      height: 100,
+    },
+    centerThermometer: {
+      width: 240,
+      height: 240,
     },
   });
   
@@ -118,7 +123,7 @@ export const HeatingScreen: React.FC = () => {
   const fillAnimation = useRef(new Animated.Value(0)).current;
   const waveAnimation = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const beeAnimation = useRef(new Animated.Value(0)).current;
+  const thermometerAnimation = useRef(new Animated.Value(0)).current;
 
   const circleSize = Math.max(screenWidth, screenHeight) * 1.9;
 
@@ -175,17 +180,17 @@ export const HeatingScreen: React.FC = () => {
     waveAnimationLoop();
     overlayAnimationLoop();
 
-    // Create bee flight animation
-    const beeFlightAnimation = () => {
+    // Create thermometer animation
+    const thermometerFlightAnimation = () => {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(beeAnimation, {
+          Animated.timing(thermometerAnimation, {
             toValue: 1,
             duration: 3000,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
-          Animated.timing(beeAnimation, {
+          Animated.timing(thermometerAnimation, {
             toValue: 0,
             duration: 3000,
             easing: Easing.inOut(Easing.sin),
@@ -195,8 +200,8 @@ export const HeatingScreen: React.FC = () => {
       ).start();
     };
 
-    // Start bee animation
-    beeFlightAnimation();
+    // Start thermometer animation
+    thermometerFlightAnimation();
 
     // Update progress
     const progressInterval = setInterval(() => {
@@ -226,20 +231,20 @@ export const HeatingScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: '#ff6400' }]}>
 
-      {/* Flying Bee - Left Side */}
+      {/* Flying Thermometer - Left Side */}
       <Animated.View
         style={[
-          styles.beeContainer,
+          styles.thermometerContainer,
           {
             transform: [
               {
-                translateY: beeAnimation.interpolate({
+                translateY: thermometerAnimation.interpolate({
                   inputRange: [0, 1],
                   outputRange: [0, -20],
                 }),
               },
               {
-                rotate: beeAnimation.interpolate({
+                rotate: thermometerAnimation.interpolate({
                   inputRange: [0, 1],
                   outputRange: ['0deg', '5deg'],
                 }),
@@ -248,10 +253,11 @@ export const HeatingScreen: React.FC = () => {
           },
         ]}
       >
-        <Image
-          source={require('../../assets/images/icons/insect.png')}
-          style={styles.bee}
-          resizeMode="contain"
+        <LottieView
+          source={require('../../assets/lotties/thermometer.json')}
+          style={styles.thermometer}
+          autoPlay
+          loop
         />
       </Animated.View>
 
@@ -281,9 +287,9 @@ export const HeatingScreen: React.FC = () => {
             />
           </Animated.View>
           
-          {/* Heat Icon in Center - Circle stays still */}
+          {/* Thermometer in Center - Circle stays still */}
           <View style={styles.iconContainer}>
-            {/* Heat waves icon with wave animation */}
+            {/* Thermometer with wave animation */}
             <Animated.View
               style={{
                 transform: [
@@ -302,10 +308,11 @@ export const HeatingScreen: React.FC = () => {
                 ],
               }}
             >
-              <Image
-                source={require('../../assets/images/icons/heat_waves.png')}
-                style={styles.heatIcon}
-                resizeMode="contain"
+              <LottieView
+                source={require('../../assets/lotties/thermometer.json')}
+                style={styles.centerThermometer}
+                autoPlay
+                loop
               />
             </Animated.View>
             

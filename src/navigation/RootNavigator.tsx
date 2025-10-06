@@ -13,7 +13,6 @@ import SupportScreen from '../screens/Support/SupportScreen';
 import SettingsScreen from '../screens/Settings/SettingsScreen';
 import HeatingScreen from '../screens/Heating/HeatingScreen';
 import TreatmentScreen from '../screens/Treatment/TreatmentScreen';
-import CompletedScreen from '../screens/Completed/CompletedScreen';
 import CoolingScreen from '../screens/cooling/CoolingScreen';
 import FinalCompletedScreen from '../screens/FinalCompleted/FinalCompletedScreen';
 import AbortedScreen from '../screens/Aborted/AbortedScreen';
@@ -24,7 +23,6 @@ export type RootStackParamList = {
   MainTabs: undefined;
   Heating: undefined;
   Treatment: undefined;
-  Completed: undefined;
   Cooling: undefined;
   FinalCompleted: undefined;
   Aborted: undefined;
@@ -52,7 +50,7 @@ const MainTabNavigator = () => {
           screenOptions={{
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: isDark ? colors.card : '#eceff3',
+              backgroundColor: isDark ? colors.card : '#F5F5F5',
               borderTopWidth: 0,
               height: 64,
               paddingBottom: 4,
@@ -67,7 +65,7 @@ const MainTabNavigator = () => {
             tabBarLabelStyle: {
               fontSize: 12,
               fontFamily: 'Roboto-Bold',
-              color: isDark ? '#9CA3AF' : '#9CA3AF',
+              fontWeight: 'bold',
               marginTop: -1,
               marginBottom: 15,
             },
@@ -81,8 +79,8 @@ const MainTabNavigator = () => {
           component={HomeScreen}
           options={{
             tabBarLabel: t('navigation.home'),
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" size={size} color={color} />
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? "home" : "home-outline"} size={size} color={color} />
             ),
           }}
         />
@@ -91,8 +89,8 @@ const MainTabNavigator = () => {
         component={InfoScreen}
         options={{
           tabBarLabel: t('navigation.info'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="information-circle-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "information-circle" : "information-circle-outline"} size={size} color={color} />
           ),
         }}
       />
@@ -101,8 +99,8 @@ const MainTabNavigator = () => {
         component={SupportScreen}
         options={{
           tabBarLabel: t('navigation.support'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="mail-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "mail" : "mail-outline"} size={size} color={color} />
           ),
         }}
       />
@@ -111,8 +109,8 @@ const MainTabNavigator = () => {
         component={SettingsScreen}
         options={{
           tabBarLabel: t('navigation.settings'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "settings" : "settings-outline"} size={size} color={color} />
           ),
         }}
       />
@@ -138,7 +136,6 @@ export const RootNavigator = () => {
         <Stack.Screen name="MainTabs" component={MainTabNavigator} />
         <Stack.Screen name="Heating" component={HeatingScreen} />
         <Stack.Screen name="Treatment" component={TreatmentScreen} />
-        <Stack.Screen name="Completed" component={CompletedScreen} />
         <Stack.Screen name="Cooling" component={CoolingScreen} />
         <Stack.Screen name="Aborted" component={AbortedScreen} />
         <Stack.Screen name="LanguagePicker" component={LanguagePickerScreen} />

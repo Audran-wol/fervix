@@ -20,6 +20,7 @@ export const TreatmentScreen: React.FC = () => {
   const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000));
   const screenFill = useRef(new Animated.Value(0)).current;
   const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
+  const textColorAnimation = useRef(new Animated.Value(0)).current;
 
   // === Sizing (unchanged) =====================================================
   const CARD = Math.min(W, H) * 0.70;
@@ -37,7 +38,7 @@ export const TreatmentScreen: React.FC = () => {
 
    // Hand (only thing we reposition)
    const HAND_SCALE = 0.92;
-   const HAND_LEFT  = CARD * 0.10;  // arm enters from LEFT, hidden by mask
+   const HAND_LEFT  = CARD * 0.05;  // arm enters from LEFT, hidden by mask
    const HAND_TOP   = CARD * 0.05;   // hand sits higher in the circle
   // ===========================================================================
 
@@ -48,6 +49,16 @@ export const TreatmentScreen: React.FC = () => {
       easing: Easing.linear,
       useNativeDriver: false,
     }).start();
+
+    // Text color animation - changes instantly after 5 seconds
+    setTimeout(() => {
+      Animated.timing(textColorAnimation, {
+        toValue: 1,
+        duration: 100, // Very quick transition (almost instant)
+        easing: Easing.linear,
+        useNativeDriver: false,
+      }).start();
+    }, 6000); // Change color after 4 seconds
 
     const startedAt = Date.now();
     let tick: NodeJS.Timeout | null = null;
@@ -63,7 +74,7 @@ export const TreatmentScreen: React.FC = () => {
           tick = null;
         }
         navigationTimeout = setTimeout(() => {
-          navigation.navigate('Completed' as never);
+          navigation.navigate('Cooling' as never);
         }, 400);
       }
     }, 200);
@@ -149,7 +160,7 @@ export const TreatmentScreen: React.FC = () => {
       justifyContent: 'center',
       backgroundColor: colors.card,
       borderWidth: 3,
-      borderColor: '#000000',
+      borderColor: '#0F172A',
       borderRadius: 22,
       shadowColor: '#000',
       shadowOpacity: 0.18,
@@ -174,7 +185,7 @@ export const TreatmentScreen: React.FC = () => {
     },
 
     titleWrap: { position: 'absolute', bottom: 220, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
-    title: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' },
+    title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
   });
 
   return (
@@ -187,7 +198,7 @@ export const TreatmentScreen: React.FC = () => {
           {/* Hand is clipped by mask */}
           <View style={s.circleMask}>
             <Image
-              source={require('../../assets/images/icons/hand_now4.png')}
+              source={require('../../assets/images/icons/hand_final.png')}
               style={s.hand}
               onLayout={(e) => setHandLayout(e.nativeEvent.layout)}
             />
@@ -204,7 +215,19 @@ export const TreatmentScreen: React.FC = () => {
       </View>
 
       <View style={s.titleWrap}>
-        <Text style={s.title}>{t('treatment.active')}</Text>
+        <Animated.Text 
+          style={[
+            s.title,
+            {
+              color: textColorAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [colors.textPrimary, '#FFFFFF'],
+              }),
+            },
+          ]}
+        >
+          {t('treatment.active')}
+        </Animated.Text>
       </View>
     </View>
   );

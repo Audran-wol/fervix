@@ -28,6 +28,7 @@ export const CoolingScreen: React.FC = () => {
   const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000));
   const screenFill = useRef(new Animated.Value(0)).current;
   const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
+  const textColorAnimation = useRef(new Animated.Value(0)).current;
 
   // === Sizing (same as treatment screen) =====================================================
   const CARD = Math.min(W, H) * 0.70;
@@ -104,7 +105,7 @@ export const CoolingScreen: React.FC = () => {
       justifyContent: 'center',
       backgroundColor: colors.card,
       borderWidth: 3,
-      borderColor: '#000000',
+      borderColor: '#9CA3AF',
       borderRadius: 22,
       shadowColor: '#000',
       shadowOpacity: 0.18,
@@ -126,11 +127,10 @@ export const CoolingScreen: React.FC = () => {
     },
 
     titleWrap: { position: 'absolute', bottom: 198, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
-    title: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' },
+    title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
     subtitle: {
       fontSize: 16,
       fontWeight: 'bold',
-      color: colors.textPrimary,
       textAlign: 'center',
       marginTop: 8,
       opacity: 0.8,
@@ -144,6 +144,17 @@ export const CoolingScreen: React.FC = () => {
       easing: Easing.linear,
       useNativeDriver: false,
     }).start();
+
+    // Text color animation - starts white, changes to black after 8 seconds
+    setTimeout(() => {
+      // Change to black after 8 seconds
+      Animated.timing(textColorAnimation, {
+        toValue: 1,
+        duration: 100,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      }).start();
+    }, 7000);
 
     const startedAt = Date.now();
     let tick: NodeJS.Timeout | null = null;
@@ -212,7 +223,7 @@ export const CoolingScreen: React.FC = () => {
           {/* Hand is clipped by mask */}
           <View style={s.circleMask}>
             <Image
-              source={require('../../assets/images/icons/cool_hand.png')}
+              source={require('../../assets/images/icons/hand_cool1.png')}
               style={s.hand}
               onLayout={(e) => setHandLayout(e.nativeEvent.layout)}
             />
@@ -229,8 +240,32 @@ export const CoolingScreen: React.FC = () => {
       </View>
 
       <View style={s.titleWrap}>
-        <Text style={s.title}>{t('cooling.cooling')}</Text>
-        <Text style={s.subtitle}>{t('cooling.safelyRemove')}</Text>
+        <Animated.Text 
+          style={[
+            s.title,
+            {
+              color: textColorAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['#FFFFFF', colors.textPrimary],
+              }),
+            },
+          ]}
+        >
+          {t('cooling.cooling')}
+        </Animated.Text>
+        <Animated.Text 
+          style={[
+            s.subtitle,
+            {
+              color: textColorAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['#FFFFFF', colors.textPrimary],
+              }),
+            },
+          ]}
+        >
+          {t('cooling.safelyRemove')}
+        </Animated.Text>
       </View>
     </View>
   );
