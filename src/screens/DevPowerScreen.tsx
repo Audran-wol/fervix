@@ -36,16 +36,24 @@ export const DevPowerScreen: React.FC = () => {
   const maxEvents = 20;
 
   useEffect(() => {
+    console.log('[DevPowerScreen] Setting up subscriptions and auto-starting session');
+    
+    // Auto-start the session when screen loads
+    PowerController.startSession({ presetId: profile });
+    
     // Subscribe to all power controller events
     const unsubSample = PowerController.subscribe('Sample', (event: SampleEvent) => {
+      console.log('[DevPowerScreen] Received Sample:', event);
       setSamples(prev => [...prev.slice(-maxSamples + 1), event]);
     });
 
     const unsubDetector = PowerController.subscribe('Detector', (event: DetectorEvent) => {
+      console.log('[DevPowerScreen] Received Detector:', event);
       setDetectorEvents(prev => [...prev.slice(-maxEvents + 1), event]);
     });
 
     const unsubPhase = PowerController.subscribe('PhaseChanged', (event) => {
+      console.log('[DevPowerScreen] Received PhaseChanged:', event);
       setCurrentPhase(event.phase);
     });
 
@@ -62,8 +70,10 @@ export const DevPowerScreen: React.FC = () => {
       unsubDetector();
       unsubPhase();
       clearInterval(interval);
+      // Auto-stop when leaving screen
+      PowerController.stopSession();
     };
-  }, []);
+  }, [profile]);
 
   const handleStartSim = () => {
     PowerController.startSession({ presetId: profile });
@@ -182,6 +192,13 @@ export const DevPowerScreen: React.FC = () => {
     buttonTextSecondary: {
       color: colors.textPrimary,
     },
+    autoStartNote: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+      fontStyle: 'italic',
+    },
     eventItem: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -275,21 +292,13 @@ export const DevPowerScreen: React.FC = () => {
           <View style={styles.card}>
             <View style={styles.buttonRow}>
               <TouchableOpacity
-                style={styles.button}
-                onPress={handleStartSim}
-              >
-                <Text style={styles.buttonText}>Start Simulation</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
                 style={[styles.button, styles.buttonSecondary]}
                 onPress={handleStopSim}
               >
                 <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
-                  Stop
+                  Stop Session
                 </Text>
               </TouchableOpacity>
-            </View>
-            <View style={[styles.buttonRow, { marginTop: 12 }]}>
               <TouchableOpacity
                 style={[styles.button, styles.buttonSecondary]}
                 onPress={handleClearData}
@@ -299,6 +308,9 @@ export const DevPowerScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+            <Text style={styles.autoStartNote}>
+              📡 Session auto-starts when screen loads
+            </Text>
           </View>
         </View>
 

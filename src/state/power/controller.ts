@@ -13,7 +13,7 @@ import type {
 } from './contracts';
 
 // Feature flag - set to false to use native implementation
-export const USE_POWER_SIM = true; // Using simulator until NDK issue resolved
+export const USE_POWER_SIM = false; // Native mode enabled for physical device testing
 
 /**
  * Singleton power controller instance
