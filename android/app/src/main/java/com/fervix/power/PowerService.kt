@@ -93,6 +93,8 @@ class PowerService : Service() {
         val current_mA = reader.readCurrentMa()
         val tMillis = System.currentTimeMillis()
         
+        Log.d(TAG, "SAMPLE: $current_mA mA at $tMillis")
+        
         // Process through detector
         detector.processSample(current_mA, tMillis)
         
@@ -102,13 +104,15 @@ class PowerService : Service() {
     
     private fun emitSampleEvent(tMillis: Long, current_mA: Double) {
         try {
+            Log.d(TAG, "EMITTING Sample event: $current_mA mA")
             val params = Arguments.createMap().apply {
                 putDouble("tMillis", tMillis.toDouble())
                 putDouble("current_mA", current_mA)
             }
             sendEvent("Sample", params)
+            Log.d(TAG, "Sample event sent successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to emit Sample event: ${e.message}")
+            Log.e(TAG, "Failed to emit Sample event: ${e.message}", e)
         }
     }
     
@@ -127,12 +131,23 @@ class PowerService : Service() {
     
     private fun sendEvent(eventName: String, params: com.facebook.react.bridge.WritableMap?) {
         try {
-            // Get React Native context from PowerModule
-            PowerModule.reactContext?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                ?.emit(eventName, params)
+            Log.d(TAG, "Sending event $eventName to React Native")
+            val reactContext = PowerModule.reactContext
+            if (reactContext == null) {
+                Log.w(TAG, "React context is null, cannot send event $eventName")
+                return
+            }
+            
+            val emitter = reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+            if (emitter == null) {
+                Log.w(TAG, "Event emitter is null, cannot send event $eventName")
+                return
+            }
+            
+            emitter.emit(eventName, params)
+            Log.d(TAG, "Event $eventName sent successfully to React Native")
         } catch (e: Exception) {
-            // React Native context might not be available yet
-            Log.w(TAG, "Could not send event $eventName: ${e.message}")
+            Log.e(TAG, "Exception sending event $eventName: ${e.message}", e)
         }
     }
     

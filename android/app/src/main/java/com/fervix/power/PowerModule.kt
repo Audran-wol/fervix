@@ -24,13 +24,23 @@ class PowerModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     @ReactMethod
     fun startSession(options: ReadableMap, promise: Promise) {
         try {
-            Log.d(TAG, "Starting power monitoring session")
+            Log.d(TAG, "=== START SESSION DEBUG ===")
+            Log.d(TAG, "Options: $options")
+            Log.d(TAG, "React context available: ${reactApplicationContext != null}")
             
             val context = reactApplicationContext
+            if (context == null) {
+                Log.e(TAG, "React context is null!")
+                promise.reject("START_SESSION_ERROR", "React context is null")
+                return
+            }
+            
             val intent = Intent(context, PowerService::class.java)
+            Log.d(TAG, "Created intent for PowerService")
             
             // Start foreground service
-            context.startService(intent)
+            val result = context.startService(intent)
+            Log.d(TAG, "startService result: $result")
             
             promise.resolve(null)
             Log.d(TAG, "Session started successfully")
