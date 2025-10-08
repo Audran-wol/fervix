@@ -150,6 +150,24 @@ export const SettingsScreen: React.FC = () => {
             <Text style={styles.qrButtonText}>{t('settings.qrCodeScreen')}</Text>
           </TouchableOpacity>
         </FvCard>
+
+        {/* Dev tools - only in development */}
+        {__DEV__ && (
+          <FvCard style={styles.card}>
+            <Text style={styles.cardTitle}>Development Tools</Text>
+            <Text style={styles.cardText}>
+              Monitor power controller activity, view samples, and debug detector events.
+            </Text>
+            <TouchableOpacity
+              style={styles.qrButton}
+              onPress={() => navigation.navigate('DevPower' as never)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="speedometer-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.qrButtonText}>Power Monitor</Text>
+            </TouchableOpacity>
+          </FvCard>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

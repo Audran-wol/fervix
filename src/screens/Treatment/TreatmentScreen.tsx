@@ -8,6 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/useTheme';
+import { useSessionStore } from '../../state';
 
 const { width: W, height: H } = Dimensions.get('window');
 const DURATION_MS = 20_000;
@@ -16,6 +17,9 @@ export const TreatmentScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const backendPhase = useSessionStore(state => state.backendPhase);
+  const remainingMs = useSessionStore(state => state.remainingMs);
+  const requestStop = useSessionStore(state => state.requestStop);
 
   const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000));
   const screenFill = useRef(new Animated.Value(0)).current;
@@ -42,6 +46,22 @@ export const TreatmentScreen: React.FC = () => {
    const HAND_TOP   = CARD * 0.05;   // hand sits higher in the circle
   // ===========================================================================
 
+  // Navigate based on backend phase changes
+  useEffect(() => {
+    if (backendPhase === 'COOLDOWN' || backendPhase === 'DONE') {
+      navigation.navigate('Cooling' as never);
+    } else if (backendPhase === 'ABORT') {
+      navigation.navigate('Aborted' as never);
+    }
+  }, [backendPhase, navigation]);
+
+  // Update countdown from store's remainingMs
+  useEffect(() => {
+    if (remainingMs !== undefined) {
+      setCountdown(Math.ceil(remainingMs / 1000));
+    }
+  }, [remainingMs]);
+
   useEffect(() => {
     Animated.timing(screenFill, {
       toValue: 1,
@@ -58,35 +78,9 @@ export const TreatmentScreen: React.FC = () => {
         easing: Easing.linear,
         useNativeDriver: false,
       }).start();
-    }, 6000); // Change color after 4 seconds
+    }, 6000);
 
-    const startedAt = Date.now();
-    let tick: NodeJS.Timeout | null = null;
-    let navigationTimeout: NodeJS.Timeout | null = null;
-
-    tick = setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      const left = Math.max(0, Math.ceil((DURATION_MS - elapsed) / 1000));
-      setCountdown(left);
-      if (left <= 0) {
-        if (tick) {
-          clearInterval(tick);
-          tick = null;
-        }
-        navigationTimeout = setTimeout(() => {
-          navigation.navigate('Cooling' as never);
-        }, 400);
-      }
-    }, 200);
-
-    return () => {
-      if (tick) {
-        clearInterval(tick);
-      }
-      if (navigationTimeout) {
-        clearTimeout(navigationTimeout);
-      }
-    };
+    return () => {};
   }, []);
 
   const screenFillHeight = screenFill.interpolate({
@@ -186,6 +180,23 @@ export const TreatmentScreen: React.FC = () => {
 
     titleWrap: { position: 'absolute', bottom: 220, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
     title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+    
+    stopButton: {
+      position: 'absolute',
+      bottom: 160,
+      alignSelf: 'center',
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 24,
+      borderWidth: 2,
+      borderColor: 'rgba(255, 255, 255, 0.4)',
+    },
+    stopButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
   });
 
   return (
@@ -229,6 +240,14 @@ export const TreatmentScreen: React.FC = () => {
           {t('treatment.active')}
         </Animated.Text>
       </View>
+
+      <TouchableOpacity 
+        style={s.stopButton}
+        onPress={requestStop}
+        activeOpacity={0.7}
+      >
+        <Text style={s.stopButtonText}>{t('buttons.stopTreatment')}</Text>
+      </TouchableOpacity>
     </View>
   );
 };

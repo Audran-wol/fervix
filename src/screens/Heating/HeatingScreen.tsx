@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/useTheme';
+import { useSessionStore } from '../../state';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -23,6 +24,7 @@ export const HeatingScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const backendPhase = useSessionStore(state => state.backendPhase);
   const [progress, setProgress] = useState(0);
   
   const styles = StyleSheet.create({
@@ -127,8 +129,17 @@ export const HeatingScreen: React.FC = () => {
 
   const circleSize = Math.max(screenWidth, screenHeight) * 1.9;
 
+  // Navigate based on backend phase changes
   useEffect(() => {
-    // Start filling animation (slower)
+    if (backendPhase === 'TREATMENT') {
+      navigation.navigate('Treatment' as never);
+    } else if (backendPhase === 'ABORT') {
+      navigation.navigate('Aborted' as never);
+    }
+  }, [backendPhase, navigation]);
+
+  useEffect(() => {
+    // Start filling animation (visual only, not tied to actual timing)
     Animated.timing(fillAnimation, {
       toValue: 1,
       duration: 15000,
@@ -203,15 +214,11 @@ export const HeatingScreen: React.FC = () => {
     // Start thermometer animation
     thermometerFlightAnimation();
 
-    // Update progress
+    // Visual progress animation (cosmetic only)
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(progressInterval);
-          // Use setTimeout to navigate outside of setState
-          setTimeout(() => {
-            navigation.navigate('Treatment' as never);
-          }, 100);
           return 100;
         }
         return prev + 1;

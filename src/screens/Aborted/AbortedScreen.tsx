@@ -1,10 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { FvButton, FvCard } from '../../components';
 import { useTheme } from '../../theme/useTheme';
+import { useSessionStore } from '../../state';
 
 export const AbortedScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const { profile, requestStart } = useSessionStore();
 
   const styles = StyleSheet.create({
     container: {
@@ -105,7 +111,9 @@ export const AbortedScreen: React.FC = () => {
           <FvButton
             title={t('buttons.restartTreatment')}
             onPress={() => {
-              // Restart treatment
+              // Restart treatment with same profile
+              requestStart({ presetId: profile });
+              navigation.navigate('Heating' as never);
             }}
             style={styles.button}
           />
@@ -113,6 +121,10 @@ export const AbortedScreen: React.FC = () => {
             title={t('buttons.returnHome')}
             onPress={() => {
               // Navigate to home
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'MainTabs' as never }],
+              });
             }}
             variant="outline"
             style={styles.button}

@@ -211,6 +211,10 @@ export const HomeScreen: React.FC = () => {
       useNativeDriver: true,
     }).start();
 
+    // Start the power controller session using current profile
+    const { requestStart } = useSessionStore.getState();
+    requestStart({ presetId: profile });
+
     // Hide image after 3 seconds and navigate
     setTimeout(() => {
       setShowDeviceImage(false);
@@ -241,7 +245,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.grid}>
           <ProfileCard
             label={t('start.child')}
-            iconSource={require('../../assets/images/icons/new_child.png')}
+            iconSource={require('../../assets/images/icons/other child.png')}
             selected={profile === 'child'}
             onPress={() => setProfile('child')}
             style={styles.gridItem}
