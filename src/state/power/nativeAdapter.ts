@@ -18,20 +18,11 @@ const LINKING_ERROR =
   '- Rebuild the app after installing the package\n' +
   '- You are running on a physical device (not simulator)\n';
 
-// Access native module
-const FervixNativePower = NativeModules.FervixNativePower
-  ? NativeModules.FervixNativePower
-  : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      }
-    );
+// Access native module - handle gracefully when not available
+const FervixNativePower = NativeModules.FervixNativePower || null;
 
-// Create event emitter
-const eventEmitter = new NativeEventEmitter(FervixNativePower);
+// Create event emitter - handle null module gracefully
+const eventEmitter = FervixNativePower ? new NativeEventEmitter(FervixNativePower) : null;
 
 /**
  * Native implementation of IPowerController
@@ -41,6 +32,11 @@ export class NativePowerAdapter implements IPowerController {
   private subscriptions: Map<string, any> = new Map();
 
   startSession(params: { presetId: string; ambientC?: number }): void {
+    if (!FervixNativePower) {
+      console.error('[NativePowerAdapter] Native module not available:', LINKING_ERROR);
+      return;
+    }
+    
     console.log('[NativePowerAdapter] Starting session:', params);
     FervixNativePower.startSession(params)
       .then(() => {
@@ -52,6 +48,11 @@ export class NativePowerAdapter implements IPowerController {
   }
 
   stopSession(): void {
+    if (!FervixNativePower) {
+      console.error('[NativePowerAdapter] Native module not available:', LINKING_ERROR);
+      return;
+    }
+    
     console.log('[NativePowerAdapter] Stopping session');
     FervixNativePower.stopSession()
       .then(() => {
@@ -66,6 +67,11 @@ export class NativePowerAdapter implements IPowerController {
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
   subscribe(event: string, handler: any): () => void {
+    if (!FervixNativePower || !eventEmitter) {
+      console.error('[NativePowerAdapter] Native module not available for subscription');
+      return () => {}; // Return empty unsubscribe function
+    }
+    
     console.log(`[NativePowerAdapter] Subscribing to ${event}`);
     
     const subscription = eventEmitter.addListener(event, handler);
@@ -80,6 +86,15 @@ export class NativePowerAdapter implements IPowerController {
   }
 
   getSnapshot() {
+    if (!FervixNativePower) {
+      console.error('[NativePowerAdapter] Native module not available for snapshot');
+      return Promise.resolve({
+        phase: 'IDLE' as Phase,
+        baseline_mA: 0,
+        lastDelta_mA: 0,
+      });
+    }
+    
     return FervixNativePower.getSnapshot()
       .then((data: any) => {
         return {
