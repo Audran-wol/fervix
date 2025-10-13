@@ -11,24 +11,69 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { ProfileCard, SettingToggleRow, InfoCard } from '../../components/ui';
 import { useSessionStore } from '../../state/useSessionStore';
 import { useSettingsStore } from '../../state/useSettingsStore';
+import { PowerController } from '../../state/power';
+import type { SampleEvent } from '../../state/power';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const { profile, setProfile } = useSessionStore();
   const { sensitive, setSensitive } = useSettingsStore();
   const [showDeviceImage, setShowDeviceImage] = useState(false);
   const [deviceConnected, setDeviceConnected] = useState(false);
+  const [deviceDetectionThreshold, setDeviceDetectionThreshold] = useState<number>(-0.7);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Refs to hold latest values for use in subscriber callbacks
+  const thresholdRef = useRef(deviceDetectionThreshold);
+  const connectedRef = useRef(false);
+
+  // Keep threshold ref fresh + sync native
+  useEffect(() => {
+    thresholdRef.current = deviceDetectionThreshold;                 // always latest for subscriber
+    PowerController.setDeviceDetectionThreshold(deviceDetectionThreshold); // keep native in sync
+    console.log(`[HomeScreen] Threshold updated to: ${deviceDetectionThreshold}mA`);
+  }, [deviceDetectionThreshold]);
+
+  // Method to update threshold from external source (like DevPowerScreen)
+  const updateThreshold = (newThreshold: number) => {
+    console.log(`[HomeScreen] Updating threshold to: ${newThreshold}mA`);
+    setDeviceDetectionThreshold(newThreshold);
+  };
+
+  // Expose updateThreshold method globally for DevPowerScreen to use
+  useEffect(() => {
+    (window as any).updateHomeScreenThreshold = updateThreshold;
+    
+    // Try to sync with DevPowerScreen threshold if it's already set
+    if ((window as any).getDevPowerScreenThreshold) {
+      const devThreshold = (window as any).getDevPowerScreenThreshold();
+      if (devThreshold !== deviceDetectionThreshold) {
+        console.log(`[HomeScreen] Syncing with DevPowerScreen threshold: ${devThreshold}mA`);
+        setDeviceDetectionThreshold(devThreshold);
+      }
+    }
+    
+    return () => {
+      delete (window as any).updateHomeScreenThreshold;
+    };
+  }, []);
+
+  // Detection logic (same as DevPowerScreen)
+  const isDetected = (current: number, _baseline: number, threshold: number) =>
+    Number.isFinite(current) && Number.isFinite(threshold) &&
+    current < threshold;
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
@@ -191,6 +236,68 @@ export const HomeScreen: React.FC = () => {
     ).start();
   }, [bob, pulsePhase, deviceImageImpulse]);
 
+      // HomeScreen detection - only when Home is focused
+      useEffect(() => {
+        if (!isFocused) return; // only run when Home is visible
+
+        console.log('[HomeScreen] startSession + subscribe(Sample)');
+        PowerController.startSession({ presetId: profile });
+
+        const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
+          const cur = Number.isFinite(event.current_mA) ? event.current_mA! : undefined;
+          if (cur === undefined) return;
+
+          const thr = thresholdRef.current;              // latest threshold (no stale closure)
+          const detected = Number.isFinite(thr) && cur <= thr;
+
+          console.log(`[HomeScreen] Detection check: current=${cur}mA, threshold=${thr}mA, detected=${detected}`);
+
+          // Use a ref so we don't rely on React's async state inside the callback
+          if (detected && !connectedRef.current) {
+            connectedRef.current = true;
+            setDeviceConnected(true);
+            setShowDeviceImage(true);
+            console.log('[HomeScreen] 🔌 Setting showDeviceImage to TRUE');
+
+            // Start the image animation
+            Animated.timing(deviceImagePulse, {
+              toValue: 1,
+              duration: 500,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }).start();
+
+            // small, consistent delay like your PM screen UX
+            setTimeout(() => {
+              try {
+                const { requestStart } = useSessionStore.getState();
+                requestStart({ presetId: profile });     // kick off heating
+              } finally {
+                setShowDeviceImage(false);
+                setDeviceConnected(false);
+                connectedRef.current = false;
+                deviceImagePulse.setValue(0);
+                navigation.navigate('Heating' as never);
+              }
+            }, 5000);
+          }
+
+          if (!detected && connectedRef.current) {
+            connectedRef.current = false;
+            setDeviceConnected(false);
+            setShowDeviceImage(false);
+            deviceImagePulse.setValue(0);
+          }
+        });
+
+        // focus/cleanup
+        return () => {
+          console.log('[HomeScreen] cleanup: unsubscribe + stopSession');
+          unsub();
+          PowerController.stopSession();
+        };
+      }, [isFocused, profile, navigation]);   // ⬅️ IMPORTANT: no deviceConnected here
+
   const bobTranslate = bob.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] });
 
   // Pulse rising from below (subtle; doesn't resize the section)
@@ -198,7 +305,7 @@ export const HomeScreen: React.FC = () => {
   const pulseScale = pulsePhase.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.6] });
   const pulseOpacity = pulsePhase.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.45, 0] });
 
-  // Handle device insertion click
+  // Handle device insertion click (manual trigger)
   const handleDeviceInsertion = () => {
     setShowDeviceImage(true);
     setDeviceConnected(true);
@@ -215,13 +322,13 @@ export const HomeScreen: React.FC = () => {
     const { requestStart } = useSessionStore.getState();
     requestStart({ presetId: profile });
 
-    // Hide image after 3 seconds and navigate
+    // Wait 5 seconds before navigating (same as automatic detection)
     setTimeout(() => {
       setShowDeviceImage(false);
       setDeviceConnected(false);
       deviceImagePulse.setValue(0);
       navigation.navigate('Heating' as never);
-    }, 3000);
+    }, 5000);
   };
 
   return (
@@ -279,20 +386,18 @@ export const HomeScreen: React.FC = () => {
           />
         </View>
 
-        {/* Insert Device Instruction - Clickable */}
-        <TouchableOpacity 
-          style={styles.insertDeviceCard}
-          onPress={handleDeviceInsertion}
-          activeOpacity={0.8}
-        >
-        <Text style={styles.insertDeviceText}>
-          {deviceConnected ? t('start.deviceConnected') : t('start.insertDevice')}
-        </Text>
-        </TouchableOpacity>
+
+        {/* Insert Device Instruction - Automatic Detection Only */}
+        <View style={styles.insertDeviceCard}>
+            <Text style={styles.insertDeviceText}>
+              {deviceConnected ? 'Device Connected' : t('start.insertDevice')}
+            </Text>
+        </View>
 
         {/* Device Image Display */}
         {showDeviceImage && (
           <View style={styles.deviceImageContainer}>
+            {console.log('[HomeScreen] 🔍 Rendering phone_wrist.png image')}
             <Animated.Image
               source={require('../../assets/images/icons/phone_wrist.png')}
               style={[

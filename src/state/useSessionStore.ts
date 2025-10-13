@@ -106,6 +106,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   // Bind power controller and subscribe to phase changes (call once at app start)
   bindPowerController: (controller: IPowerController) => {
+    console.log('[SessionStore] 🔗 Binding power controller...');
     powerControllerInstance = controller;
 
     // Unsubscribe from previous if exists
@@ -117,6 +118,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     phaseUnsubscribe = controller.subscribe('PhaseChanged', (event: PhaseChangedEvent) => {
       const { phase: backendPhase, remainingMs, reason } = event;
       const mappedPhase = mapBackendPhase(backendPhase);
+
+      console.log('[SessionStore] 🔄 PhaseChanged event received:', {
+        backendPhase,
+        remainingMs,
+        reason,
+        mappedPhase
+      });
 
       set({
         backendPhase,

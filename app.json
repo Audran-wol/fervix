@@ -2,37 +2,36 @@
   "expo": {
     "name": "FERVIX",
     "slug": "fervix-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "sdkVersion": "54.0.0",
-    "platforms": [
-      "ios",
-      "android"
-    ],
+
+    "icon": "./assets/icon.png",
+
+    "android": {
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundColor": "#F7F6FA",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png"
+      },
+      "package": "com.fervix.app",
+      "permissions": ["CAMERA"]
+    },
+
+    "ios": { 
+      "supportsTablet": true, 
+      "bundleIdentifier": "com.fervix.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to camera to scan QR codes for device activation."
+      }
+    },
     "splash": {
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#F7F6FA"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.fervix.app"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#F7F6FA"
-      },
-      "package": "com.fervix.app"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-font",
-      "expo-asset"
-    ]
+    "assetBundlePatterns": ["**/*"],
+    "plugins": ["expo-font", "expo-asset"]
   }
 }

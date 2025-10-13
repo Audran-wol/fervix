@@ -137,9 +137,9 @@ export const SettingsScreen: React.FC = () => {
         </FvCard>
 
         <FvCard style={styles.card}>
-          <Text style={styles.cardTitle}>{t('settings.deviceActivation')}</Text>
+          <Text style={styles.cardTitle}>Device Activation</Text>
           <Text style={styles.cardText}>
-            {t('settings.deviceActivationDescription')}
+            Scan QR code to activate your device or view activation status
           </Text>
           <TouchableOpacity
             style={styles.qrButton}
@@ -147,27 +147,25 @@ export const SettingsScreen: React.FC = () => {
             activeOpacity={0.8}
           >
             <Ionicons name="qr-code-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.qrButtonText}>{t('settings.qrCodeScreen')}</Text>
+            <Text style={styles.qrButtonText}>QR Code Scanner</Text>
           </TouchableOpacity>
         </FvCard>
 
-        {/* Dev tools - only in development */}
-        {__DEV__ && (
-          <FvCard style={styles.card}>
-            <Text style={styles.cardTitle}>Development Tools</Text>
-            <Text style={styles.cardText}>
-              Monitor power controller activity, view samples, and debug detector events.
-            </Text>
-            <TouchableOpacity
-              style={styles.qrButton}
-              onPress={() => navigation.navigate('DevPower' as never)}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="speedometer-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.qrButtonText}>Power Monitor</Text>
-            </TouchableOpacity>
-          </FvCard>
-        )}
+        {/* Power Monitor - available in production */}
+        <FvCard style={styles.card}>
+          <Text style={styles.cardTitle}>Power Monitor</Text>
+          <Text style={styles.cardText}>
+            Monitor power controller activity, view samples, and adjust device detection threshold.
+          </Text>
+          <TouchableOpacity
+            style={styles.qrButton}
+            onPress={() => navigation.navigate('DevPower' as never)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="speedometer-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.qrButtonText}>Power Monitor</Text>
+          </TouchableOpacity>
+        </FvCard>
       </ScrollView>
     </SafeAreaView>
   );

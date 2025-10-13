@@ -16,6 +16,7 @@ import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/useTheme';
+import { useSessionStore } from '../../state';
 
 const { width: W, height: H } = Dimensions.get('window');
 const DURATION_MS = 10_000; // 10s
@@ -24,11 +25,21 @@ export const CoolingScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const backendPhase = useSessionStore(state => state.backendPhase);
 
   const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000));
   const screenFill = useRef(new Animated.Value(0)).current;
   const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
   const textColorAnimation = useRef(new Animated.Value(0)).current;
+
+  // Navigate based on backend phase changes
+  useEffect(() => {
+    console.log('[CoolingScreen] Backend phase changed to:', backendPhase);
+    if (backendPhase === 'DONE') {
+      console.log('[CoolingScreen] Navigating to FinalCompleted screen');
+      navigation.navigate('FinalCompleted' as never);
+    }
+  }, [backendPhase, navigation]);
 
   // === Sizing (same as treatment screen) =====================================================
   const CARD = Math.min(W, H) * 0.70;

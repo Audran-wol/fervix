@@ -19,7 +19,6 @@ export const TreatmentScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const backendPhase = useSessionStore(state => state.backendPhase);
   const remainingMs = useSessionStore(state => state.remainingMs);
-  const requestStop = useSessionStore(state => state.requestStop);
 
   const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000));
   const screenFill = useRef(new Animated.Value(0)).current;
@@ -180,23 +179,6 @@ export const TreatmentScreen: React.FC = () => {
 
     titleWrap: { position: 'absolute', bottom: 220, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
     title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
-    
-    stopButton: {
-      position: 'absolute',
-      bottom: 160,
-      alignSelf: 'center',
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      borderRadius: 24,
-      borderWidth: 2,
-      borderColor: 'rgba(255, 255, 255, 0.4)',
-    },
-    stopButtonText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#FFFFFF',
-    },
   });
 
   return (
@@ -241,13 +223,6 @@ export const TreatmentScreen: React.FC = () => {
         </Animated.Text>
       </View>
 
-      <TouchableOpacity 
-        style={s.stopButton}
-        onPress={requestStop}
-        activeOpacity={0.7}
-      >
-        <Text style={s.stopButtonText}>{t('buttons.stopTreatment')}</Text>
-      </TouchableOpacity>
     </View>
   );
 };

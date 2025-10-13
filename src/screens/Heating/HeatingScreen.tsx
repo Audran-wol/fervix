@@ -131,9 +131,12 @@ export const HeatingScreen: React.FC = () => {
 
   // Navigate based on backend phase changes
   useEffect(() => {
+    console.log('[HeatingScreen] Backend phase changed to:', backendPhase);
     if (backendPhase === 'TREATMENT') {
+      console.log('[HeatingScreen] Navigating to Treatment screen');
       navigation.navigate('Treatment' as never);
     } else if (backendPhase === 'ABORT') {
+      console.log('[HeatingScreen] Navigating to Aborted screen');
       navigation.navigate('Aborted' as never);
     }
   }, [backendPhase, navigation]);

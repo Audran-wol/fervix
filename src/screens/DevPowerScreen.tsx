@@ -4,7 +4,7 @@
  * Only available in __DEV__ mode
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -28,28 +28,102 @@ export const DevPowerScreen: React.FC = () => {
   const [currentPhase, setCurrentPhase] = useState<Phase>('IDLE');
   const [baseline_mA, setBaseline_mA] = useState<number>(0);
   const [lastDelta_mA, setLastDelta_mA] = useState<number>(0);
-  
+
   const [samples, setSamples] = useState<SampleEvent[]>([]);
-  const [detectorEvents, setDetectorEvents] = useState<DetectorEvent[]>([]);
+  const [deviceDetectionThreshold, setDeviceDetectionThreshold] = useState<number>(-0.7);
+  const [deviceDetected, setDeviceDetected] = useState<boolean>(false);
+
+  // Refs to hold latest values for use in subscriber callbacks
+  const thresholdRef = useRef(deviceDetectionThreshold);
+  const baselineRef = useRef(0);
+
+  // Keep refs up-to-date when state changes
+  useEffect(() => {
+    thresholdRef.current = deviceDetectionThreshold;
+    // Push to native each time threshold changes
+    PowerController.setDeviceDetectionThreshold(deviceDetectionThreshold);
+    console.log(`[DevPowerScreen] Threshold updated to: ${deviceDetectionThreshold}mA`);
+  }, [deviceDetectionThreshold]);
+
+  useEffect(() => {
+    baselineRef.current = baseline_mA;
+  }, [baseline_mA]);
+
+  // Helper to update threshold
+  const updateThreshold = (newThreshold: number) => {
+    console.log(`[DevPowerScreen] Setting new threshold: ${newThreshold}mA`);
+    setDeviceDetectionThreshold(newThreshold); // updates state, which triggers the effect above
+    
+    // Also update HomeScreen threshold if available
+    if ((window as any).updateHomeScreenThreshold) {
+      console.log(`[DevPowerScreen] Syncing threshold to HomeScreen: ${newThreshold}mA`);
+      (window as any).updateHomeScreenThreshold(newThreshold);
+    }
+  };
+
+  // Expose getter method for HomeScreen to sync
+  useEffect(() => {
+    (window as any).getDevPowerScreenThreshold = () => deviceDetectionThreshold;
+    return () => {
+      delete (window as any).getDevPowerScreenThreshold;
+    };
+  }, [deviceDetectionThreshold]);
 
   const maxSamples = 120;
   const maxEvents = 20;
 
+  // Show numbers safely (no 0.000 fallback). If not a number, show "--".
+  const fmt = (n: any, d = 3) => Number.isFinite(n) ? Number(n).toFixed(d) : '--';
+
+  // Detection: "more negative than threshold" means device detected (absolute current)
+  // Examples:
+  // - current = -0.789, threshold = -0.7 → -0.789 < -0.7 → TRUE (detected)
+  // - current = -0.745, threshold = -2.0 → -0.745 < -2.0 → FALSE (not detected)
+  // - current = +0.37, threshold = -0.7 → 0.37 < -0.7 → FALSE (not detected)
+  const isDetected = (current: number, _baseline: number, threshold: number) =>
+    Number.isFinite(current) && Number.isFinite(threshold) &&
+    current < threshold;
+
   useEffect(() => {
     console.log('[DevPowerScreen] Setting up subscriptions and auto-starting session');
-    
+
     // Auto-start the session when screen loads
     PowerController.startSession({ presetId: profile });
     
     // Subscribe to all power controller events
     const unsubSample = PowerController.subscribe('Sample', (event: SampleEvent) => {
-      console.log('[DevPowerScreen] Received Sample:', event);
-      setSamples(prev => [...prev.slice(-maxSamples + 1), event]);
-    });
+      const cur = Number.isFinite(event.current_mA) ? event.current_mA : undefined;
+      const incomingBaseline = Number.isFinite(event.baseline_current) ? event.baseline_current : undefined;
 
-    const unsubDetector = PowerController.subscribe('Detector', (event: DetectorEvent) => {
-      console.log('[DevPowerScreen] Received Detector:', event);
-      setDetectorEvents(prev => [...prev.slice(-maxEvents + 1), event]);
+      // Update baseline if provided
+      if (incomingBaseline !== undefined) {
+        setBaseline_mA(incomingBaseline);
+      }
+
+      // Compute delta & detection using the **latest** values from refs
+      const baseline = incomingBaseline ?? baselineRef.current;
+      if (cur !== undefined && Number.isFinite(baseline)) {
+        setLastDelta_mA(cur - baseline);
+
+        const thr = thresholdRef.current; // <-- latest threshold from ref!
+        const detected = isDetected(cur, baseline, thr);
+        setDeviceDetected(detected);
+        
+        console.log(`[DevPowerScreen] Detection check: current=${cur}mA, threshold=${thr}mA, detected=${detected}`);
+      }
+
+      // Keep samples (for the UI)
+      setSamples(prev => [...prev.slice(-maxSamples + 1), {
+        current_mA: cur,
+        voltage_V: Number.isFinite(event.voltage_V) ? event.voltage_V : undefined,
+        power_W: Number.isFinite(event.power_W) ? event.power_W : undefined,
+        battery_level: Number.isFinite(event.battery_level) ? event.battery_level : undefined,
+        charging_status: typeof event.charging_status === 'string' ? event.charging_status : 'Unknown',
+        is_charging: !!event.is_charging,
+        device_detected: typeof event.device_detected === 'boolean' ? event.device_detected : undefined,
+        baseline_current: incomingBaseline,
+        timestamp: event.timestamp || new Date().toISOString(),
+      }]);
     });
 
     const unsubPhase = PowerController.subscribe('PhaseChanged', (event) => {
@@ -61,13 +135,12 @@ export const DevPowerScreen: React.FC = () => {
     const interval = setInterval(() => {
       const snapshot = PowerController.getSnapshot();
       setCurrentPhase(snapshot.phase);
-      setBaseline_mA(snapshot.baseline_mA || 0);
-      setLastDelta_mA(snapshot.lastDelta_mA || 0);
+      if (Number.isFinite(snapshot.baseline_mA)) setBaseline_mA(snapshot.baseline_mA);
+      if (Number.isFinite(snapshot.lastDelta_mA)) setLastDelta_mA(snapshot.lastDelta_mA);
     }, 500);
 
     return () => {
       unsubSample();
-      unsubDetector();
       unsubPhase();
       clearInterval(interval);
       // Auto-stop when leaving screen
@@ -215,6 +288,117 @@ export const DevPowerScreen: React.FC = () => {
       fontSize: 11,
       color: colors.textMuted,
     },
+    
+    // Device Detection Styles
+    deviceDetectionContainer: {
+      padding: 16,
+    },
+    detectionStatus: {
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 16,
+      alignItems: 'center',
+    },
+    detectionStatusText: {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: 'bold',
+    },
+    thresholdContainer: {
+      marginBottom: 16,
+    },
+    thresholdLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginBottom: 12,
+    },
+    thresholdButtons: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 16,
+    },
+    thresholdButton: {
+      flex: 1,
+      padding: 12,
+      borderRadius: 8,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    thresholdButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+        thresholdButtonText: {
+          fontSize: 14,
+          fontWeight: '600',
+          color: colors.textPrimary,
+        },
+        thresholdButtonTextActive: {
+          color: 'white',
+        },
+    customThresholdContainer: {
+      marginTop: 8,
+    },
+        customThresholdLabel: {
+          fontSize: 14,
+          color: colors.textSecondary,
+          marginBottom: 8,
+        },
+        thresholdAdjuster: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+        },
+        adjustButton: {
+          width: 48,
+          height: 48,
+          borderRadius: 24,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 2,
+          borderColor: colors.primary,
+        },
+        adjustButtonText: {
+          fontSize: 24,
+          fontWeight: 'bold',
+          color: 'white',
+        },
+        currentThresholdDisplay: {
+          minWidth: 80,
+          padding: 12,
+          backgroundColor: colors.surface,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+        },
+        currentThresholdText: {
+          fontSize: 16,
+          fontWeight: 'bold',
+          color: colors.textPrimary,
+        },
+    baselineInfo: {
+      backgroundColor: colors.surface,
+      padding: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    baselineLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginBottom: 4,
+    },
+    baselineDescription: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
     eventDelta: {
       fontSize: 12,
       fontWeight: '500',
@@ -258,7 +442,10 @@ export const DevPowerScreen: React.FC = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Current Phase */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Current Phase</Text>
@@ -273,11 +460,11 @@ export const DevPowerScreen: React.FC = () => {
           <View style={styles.card}>
             <View style={styles.dataRow}>
               <Text style={styles.dataLabel}>Baseline (mA)</Text>
-              <Text style={styles.dataValue}>{baseline_mA.toFixed(2)}</Text>
+              <Text style={styles.dataValue}>{fmt(baseline_mA, 2)}</Text>
             </View>
             <View style={styles.dataRow}>
               <Text style={styles.dataLabel}>Delta (mA)</Text>
-              <Text style={styles.dataValue}>{lastDelta_mA.toFixed(2)}</Text>
+              <Text style={styles.dataValue}>{fmt(lastDelta_mA, 2)}</Text>
             </View>
             <View style={styles.dataRow}>
               <Text style={styles.dataLabel}>Profile</Text>
@@ -314,47 +501,6 @@ export const DevPowerScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Detector Events */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Detector Events ({detectorEvents.length})
-          </Text>
-          <View style={styles.card}>
-            {detectorEvents.length === 0 ? (
-              <Text style={styles.emptyText}>No events yet</Text>
-            ) : (
-              detectorEvents
-                .slice()
-                .reverse()
-                .map((event, idx) => {
-                  let displayType = event.type;
-                  let icon = '';
-                  
-                  if (event.type === 'ACCESSORY_CONNECTED') {
-                    displayType = '🔌 CONNECTED';
-                  } else if (event.type === 'ACCESSORY_DISCONNECTED') {
-                    displayType = '⚡ DISCONNECTED';
-                  } else if (event.type === 'START_HEAT') {
-                    displayType = '🔥 START_HEAT';
-                  } else if (event.type === 'END_HEAT') {
-                    displayType = '❄️ END_HEAT';
-                  }
-                  
-                  return (
-                    <View key={idx} style={styles.eventItem}>
-                      <Text style={styles.eventType}>{displayType}</Text>
-                      <Text style={styles.eventDelta}>
-                        Δ {event.delta_mA.toFixed(1)} mA
-                      </Text>
-                      <Text style={styles.eventTime}>
-                        {new Date(event.tMillis).toLocaleTimeString()}
-                      </Text>
-                    </View>
-                  );
-                })
-            )}
-          </View>
-        </View>
 
         {/* Sample Data */}
         <View style={styles.section}>
@@ -367,18 +513,135 @@ export const DevPowerScreen: React.FC = () => {
             ) : (
               <>
                 <View style={styles.sampleGraph}>
+                  {/* Current Readings */}
                   <Text style={styles.sampleText}>
-                    Last: {samples[samples.length - 1]?.current_mA.toFixed(1)} mA
+                    Current: {fmt(samples.at(-1)?.current_mA, 3)} mA
                   </Text>
                   <Text style={styles.sampleText}>
-                    Min: {Math.min(...samples.map(s => s.current_mA)).toFixed(1)} mA
+                    Voltage: {fmt(samples.at(-1)?.voltage_V, 3)} V
                   </Text>
                   <Text style={styles.sampleText}>
-                    Max: {Math.max(...samples.map(s => s.current_mA)).toFixed(1)} mA
+                    Power: {fmt((samples.at(-1)?.power_W ?? NaN) * 1000, 3)} mW
+                  </Text>
+                  
+                  {/* Battery Status */}
+                  <Text style={[styles.sampleText, { marginTop: 8, fontWeight: 'bold' }]}>
+                    Battery: {samples[samples.length - 1]?.battery_level || 0}%
+                  </Text>
+                  <Text style={[styles.sampleText, { 
+                    color: samples[samples.length - 1]?.is_charging ? '#4CAF50' : '#FF9800' 
+                  }]}>
+                    Status: {samples[samples.length - 1]?.charging_status || 'Unknown'}
+                  </Text>
+                  
+                  {/* Min/Max Stats */}
+                  <Text style={[styles.sampleText, { marginTop: 8, fontSize: 12, opacity: 0.7 }]}>
+                    Min Current: {
+                      samples.length
+                        ? fmt(Math.min(...samples.map(s => s?.current_mA).filter(Number.isFinite) as number[]), 3)
+                        : '--'
+                    } mA
+                  </Text>
+                  <Text style={[styles.sampleText, { fontSize: 12, opacity: 0.7 }]}>
+                    Max Current: {
+                      samples.length
+                        ? fmt(Math.max(...samples.map(s => s?.current_mA).filter(Number.isFinite) as number[]), 3)
+                        : '--'
+                    } mA
                   </Text>
                 </View>
               </>
             )}
+          </View>
+        </View>
+
+        {/* Device Detection Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Device Detection Settings
+          </Text>
+          <View style={styles.card}>
+            <View style={styles.deviceDetectionContainer}>
+                  {/* Current Detection Status */}
+                  <View style={[styles.detectionStatus, {
+                    backgroundColor: deviceDetected ? '#4CAF50' : '#FF9800'
+                  }]}>
+                    <Text style={styles.detectionStatusText}>
+                      {deviceDetected ? '🔌 Device Connected - Ready for Heating' : '🔌 No Device'}
+                    </Text>
+                  </View>
+              
+              {/* Threshold Settings */}
+              <View style={styles.thresholdContainer}>
+                <Text style={styles.thresholdLabel}>
+                  Detection Threshold: {fmt(deviceDetectionThreshold, 3)} mA
+                </Text>
+                <View style={styles.thresholdButtons}>
+                      <TouchableOpacity
+                        style={[styles.thresholdButton, deviceDetectionThreshold === -0.7 && styles.thresholdButtonActive]}
+                        onPress={() => updateThreshold(-0.7)}
+                      >
+                        <Text style={[styles.thresholdButtonText, deviceDetectionThreshold === -0.7 && styles.thresholdButtonTextActive]}>-0.7mA</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.thresholdButton, deviceDetectionThreshold === -0.5 && styles.thresholdButtonActive]}
+                        onPress={() => updateThreshold(-0.5)}
+                      >
+                        <Text style={[styles.thresholdButtonText, deviceDetectionThreshold === -0.5 && styles.thresholdButtonTextActive]}>-0.5mA</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.thresholdButton, deviceDetectionThreshold === -1.0 && styles.thresholdButtonActive]}
+                        onPress={() => updateThreshold(-1.0)}
+                      >
+                        <Text style={[styles.thresholdButtonText, deviceDetectionThreshold === -1.0 && styles.thresholdButtonTextActive]}>-1.0mA</Text>
+                      </TouchableOpacity>
+                </View>
+                
+                    {/* Threshold Adjuster */}
+                    <View style={styles.customThresholdContainer}>
+                      <Text style={styles.customThresholdLabel}>Adjust Threshold (mA):</Text>
+                      <View style={styles.thresholdAdjuster}>
+                        <TouchableOpacity
+                          style={styles.adjustButton}
+                          onPress={() => {
+                            const newThreshold = Math.round((deviceDetectionThreshold - 0.1) * 10) / 10;
+                            updateThreshold(newThreshold);
+                          }}
+                        >
+                          <Text style={styles.adjustButtonText}>-</Text>
+                        </TouchableOpacity>
+                        
+                        <View style={styles.currentThresholdDisplay}>
+                          <Text style={styles.currentThresholdText}>
+                            {fmt(deviceDetectionThreshold, 1)}mA
+                          </Text>
+                        </View>
+                        
+                        <TouchableOpacity
+                          style={styles.adjustButton}
+                          onPress={() => {
+                            const newThreshold = Math.round((deviceDetectionThreshold + 0.1) * 10) / 10;
+                            updateThreshold(newThreshold);
+                          }}
+                        >
+                          <Text style={styles.adjustButtonText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+              </View>
+              
+              {/* Baseline Info */}
+              <View style={styles.baselineInfo}>
+                <Text style={styles.baselineLabel}>
+                  Baseline Current: {fmt(baseline_mA, 3)} mA
+                </Text>
+                <Text style={styles.baselineDescription}>
+                  Current drain from baseline: {
+                    fmt((samples.at(-1)?.current_mA ?? NaN) - (baseline_mA ?? NaN), 3)
+                  } mA
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 

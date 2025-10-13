@@ -142,7 +142,7 @@ export const RootNavigator = () => {
         <Stack.Screen name="Aborted" component={AbortedScreen} />
         <Stack.Screen name="LanguagePicker" component={LanguagePickerScreen} />
         <Stack.Screen name="QRCode" component={QRCodeScreen} />
-        {__DEV__ && <Stack.Screen name="DevPower" component={DevPowerScreen} />}
+        <Stack.Screen name="DevPower" component={DevPowerScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

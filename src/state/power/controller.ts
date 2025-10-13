@@ -13,7 +13,7 @@ import type {
 } from './contracts';
 
 // Feature flag - set to false to use native implementation
-export const USE_POWER_SIM = false; // Native mode enabled for physical device testing
+export const USE_POWER_SIM = false; // Native mode for real hardware detection
 
 /**
  * Singleton power controller instance
@@ -51,6 +51,14 @@ class PowerControllerSingleton implements IPowerController {
 
   getSnapshot() {
     return this.implementation.getSnapshot();
+  }
+
+  setDeviceDetectionThreshold(threshold: number): void {
+    if ('setDeviceDetectionThreshold' in this.implementation) {
+      (this.implementation as any).setDeviceDetectionThreshold(threshold);
+    } else {
+      console.warn('[PowerController] setDeviceDetectionThreshold not available in current implementation');
+    }
   }
 }
 

@@ -125,5 +125,21 @@ export class NativePowerAdapter implements IPowerController {
         };
       });
   }
+
+  setDeviceDetectionThreshold(threshold: number): void {
+    if (!FervixNativePower) {
+      console.error('[NativePowerAdapter] Native module not available for setDeviceDetectionThreshold');
+      return;
+    }
+    
+    console.log(`[NativePowerAdapter] Setting device detection threshold to: ${threshold}mA`);
+    FervixNativePower.setDeviceDetectionThreshold(threshold)
+      .then(() => {
+        console.log(`[NativePowerAdapter] ✅ Threshold set successfully to ${threshold}mA`);
+      })
+      .catch((error: Error) => {
+        console.error('[NativePowerAdapter] ❌ Failed to set threshold:', error);
+      });
+  }
 }
 

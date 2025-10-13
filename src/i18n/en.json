@@ -198,5 +198,31 @@
     "english": "English",
     "german": "German",
     "portuguese": "Portuguese"
+  },
+  "activation": {
+    "title": "Activate Your Fervix Device",
+    "subtitle": "Scan the QR code on your device packaging to unlock the app",
+    "scanInstruction": "Scan QR code on your device",
+    "instruction": "Position the QR code within the frame above",
+    "manualEntry": "Enter Code Manually",
+    "resetActivation": "Reset Activation (Testing)",
+    "cameraPermission": "Camera permission is required to activate your device.",
+    "grantPermission": "Grant Permission",
+    "requestingPermission": "Requesting camera permission...",
+    "manualEntryTitle": "Enter Serial Code",
+    "manualEntryDescription": "Enter the 10-character serial code from your FERVIX device",
+    "manualEntryPlaceholder": "FV12345678",
+    "cancel": "Cancel",
+    "activate": "Activate",
+    "activating": "Activating...",
+    "activationSuccessful": "Activation Successful!",
+    "activationFailed": "Activation Failed",
+    "invalidQrCode": "Invalid QR Code",
+    "invalidQrCodeMessage": "Please scan a valid FERVIX QR code. The code should start with \"FV\" followed by 8 digits.",
+    "tryAgain": "Try Again",
+    "continue": "Continue",
+    "networkError": "Network error. Please check your internet connection.",
+    "serverError": "Cannot connect to server. Please check your internet connection.",
+    "unexpectedError": "An unexpected error occurred while processing the QR code. Please try again."
   }
 }

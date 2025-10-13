@@ -202,5 +202,17 @@
     "english": "Englisch",
     "german": "Deutsch",
     "portuguese": "Portugiesisch"
+  },
+  "activation": {
+    "scanInstruction": "QR-Code auf Ihrem Gerät scannen",
+    "instruction": "Positionieren Sie den QR-Code im Rahmen oben",
+    "activationSuccessful": "Aktivierung erfolgreich!",
+    "activationFailed": "Aktivierung fehlgeschlagen",
+    "invalidQrCode": "Ungültiger QR-Code",
+    "invalidQrCodeMessage": "Bitte scannen Sie einen gültigen FERVIX QR-Code. Der Code sollte mit \"FV\" beginnen, gefolgt von 8 Ziffern.",
+    "tryAgain": "Erneut versuchen",
+    "continue": "Weiter",
+    "activating": "Aktivierung...",
+    "unexpectedError": "Ein unerwarteter Fehler ist beim Verarbeiten des QR-Codes aufgetreten. Bitte versuchen Sie es erneut."
   }
 }
