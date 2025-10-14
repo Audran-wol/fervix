@@ -32,12 +32,22 @@ export const HomeScreen: React.FC = () => {
   const { sensitive, setSensitive } = useSettingsStore();
   const [showDeviceImage, setShowDeviceImage] = useState(false);
   const [deviceConnected, setDeviceConnected] = useState(false);
-  const [deviceDetectionThreshold, setDeviceDetectionThreshold] = useState<number>(-0.7);
+  const [deviceDetectionThreshold, setDeviceDetectionThreshold] = useState<number>(0.73);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Refs to hold latest values for use in subscriber callbacks
   const thresholdRef = useRef(deviceDetectionThreshold);
   const connectedRef = useRef(false);
+  
+  // Debounce refs for sustained detection
+  const startDebounceRef = useRef<number | null>(null);
+  const START_DEBOUNCE_MS = 1500;
+
+  // Local baseline & filtering (don't rely on native baseline that drifts)
+  const [localBase, setLocalBase] = useState<number | null>(null);
+  const emaRef = useRef<number | null>(null);          // filtered current
+  const dischargeNegativeRef = useRef<boolean | null>(null); // optional (not used if using deltaMag)
+  const ALPHA = 0.12; // ~3–5s time constant at ~4–8 Hz sampling
 
   // Keep threshold ref fresh + sync native
   useEffect(() => {
@@ -45,6 +55,14 @@ export const HomeScreen: React.FC = () => {
     PowerController.setDeviceDetectionThreshold(deviceDetectionThreshold); // keep native in sync
     console.log(`[HomeScreen] Threshold updated to: ${deviceDetectionThreshold}mA`);
   }, [deviceDetectionThreshold]);
+
+  // Hard-set the Home threshold to your measured draw (0.82 UI-units ~ 820 mA real)
+  useEffect(() => {
+    const TEST_THRESHOLD = 0.73;
+    setDeviceDetectionThreshold(TEST_THRESHOLD);
+    try { PowerController.setDeviceDetectionThreshold(TEST_THRESHOLD); } catch {}
+    console.log(`[HomeScreen] Applied test threshold: ${TEST_THRESHOLD} (UI units)`);
+  }, []);
 
   // Method to update threshold from external source (like DevPowerScreen)
   const updateThreshold = (newThreshold: number) => {
@@ -70,10 +88,30 @@ export const HomeScreen: React.FC = () => {
     };
   }, []);
 
-  // Detection logic (same as DevPowerScreen)
-  const isDetected = (current: number, _baseline: number, threshold: number) =>
-    Number.isFinite(current) && Number.isFinite(threshold) &&
-    current < threshold;
+  // PM-recommended detection: direction-agnostic delta magnitude
+  const isDetected = (current: number, baseline: number, threshold: number) => {
+    if (!Number.isFinite(current) || !Number.isFinite(baseline) || !Number.isFinite(threshold)) {
+      return false;
+    }
+    // Direction-agnostic: delta magnitude (always positive)
+    const deltaMag = Math.abs(current - baseline);
+    return deltaMag >= Math.abs(threshold);
+  };
+
+  // Helper to filter and baseline (don't rely on native baseline that drifts)
+  function filterEMA(x: number): number {
+    if (emaRef.current == null) emaRef.current = x;
+    else emaRef.current = emaRef.current + ALPHA * (x - emaRef.current);
+    return emaRef.current!;
+  }
+
+  function updateLocalBaseline(x: number) {
+    // Only adapt baseline when NOT in detection debounce and NOT connected
+    if (startDebounceRef.current !== null || connectedRef.current) return;
+    // Initialize or gently adapt
+    if (localBase == null) setLocalBase(x);
+    else setLocalBase(prev => prev == null ? x : prev + ALPHA * (x - prev));
+  }
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
@@ -244,22 +282,54 @@ export const HomeScreen: React.FC = () => {
         PowerController.startSession({ presetId: profile });
 
         const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
-          const cur = Number.isFinite(event.current_mA) ? event.current_mA! : undefined;
-          if (cur === undefined) return;
+          const curRaw = Number.isFinite(event.current_mA) ? event.current_mA! : undefined;
+          if (curRaw === undefined) return;
 
-          const thr = thresholdRef.current;              // latest threshold (no stale closure)
-          const detected = Number.isFinite(thr) && cur <= thr;
+          // OPTIONAL: pause while charging (many devices misreport deltas then)
+          if (event.is_charging) {
+            startDebounceRef.current = null;
+            if (connectedRef.current) {
+              connectedRef.current = false;
+              setDeviceConnected(false);
+              setShowDeviceImage(false);
+              deviceImagePulse.setValue(0);
+            }
+            return;
+          }
 
-          console.log(`[HomeScreen] Detection check: current=${cur}mA, threshold=${thr}mA, detected=${detected}`);
+          // 1) Filter current (smoother & more robust)
+          const cur = filterEMA(curRaw);
 
-          // Use a ref so we don't rely on React's async state inside the callback
-          if (detected && !connectedRef.current) {
+          // 2) Maintain our own baseline while idle (don't rely on native baseline)
+          updateLocalBaseline(cur);
+          const base = localBase ?? cur; // first few samples
+
+          // 3) Delta magnitude against our frozen/adaptive baseline
+          const thr = thresholdRef.current;
+          const deltaMag = Math.abs(cur - base);
+          const detectedNow = Number.isFinite(deltaMag) && Number.isFinite(thr) && deltaMag >= Math.abs(thr);
+
+          // 4) Debounce (sustained ≥ 1.5s)
+          const now = Date.now();
+          if (detectedNow) {
+            if (startDebounceRef.current === null) startDebounceRef.current = now;
+          } else {
+            startDebounceRef.current = null;
+          }
+          const debouncedDetected =
+            detectedNow &&
+            startDebounceRef.current !== null &&
+            (now - startDebounceRef.current) >= START_DEBOUNCE_MS;
+
+          console.log(`[HomeScreen] cur=${cur.toFixed(3)} base=${(base??0).toFixed(3)} |Δ|=${deltaMag.toFixed(3)} thr=${thr} debounced=${debouncedDetected}`);
+
+          // 5) Fire once when debounced; freeze baseline while connected
+          if (debouncedDetected && !connectedRef.current) {
             connectedRef.current = true;
             setDeviceConnected(true);
             setShowDeviceImage(true);
-            console.log('[HomeScreen] 🔌 Setting showDeviceImage to TRUE');
+            console.log('[HomeScreen] 🔌 Device detected — starting flow');
 
-            // Start the image animation
             Animated.timing(deviceImagePulse, {
               toValue: 1,
               duration: 500,
@@ -267,22 +337,23 @@ export const HomeScreen: React.FC = () => {
               useNativeDriver: true,
             }).start();
 
-            // small, consistent delay like your PM screen UX
             setTimeout(() => {
               try {
                 const { requestStart } = useSessionStore.getState();
-                requestStart({ presetId: profile });     // kick off heating
+                requestStart({ presetId: profile }); // kick off heating
               } finally {
                 setShowDeviceImage(false);
                 setDeviceConnected(false);
                 connectedRef.current = false;
                 deviceImagePulse.setValue(0);
+                // On disconnect, allow baseline to adapt again
                 navigation.navigate('Heating' as never);
               }
             }, 5000);
           }
 
-          if (!detected && connectedRef.current) {
+          // 6) If it dips below threshold before debounce or after, clean up
+          if (!detectedNow && connectedRef.current && startDebounceRef.current === null) {
             connectedRef.current = false;
             setDeviceConnected(false);
             setShowDeviceImage(false);
@@ -397,7 +468,6 @@ export const HomeScreen: React.FC = () => {
         {/* Device Image Display */}
         {showDeviceImage && (
           <View style={styles.deviceImageContainer}>
-            {console.log('[HomeScreen] 🔍 Rendering phone_wrist.png image')}
             <Animated.Image
               source={require('../../assets/images/icons/phone_wrist.png')}
               style={[

@@ -24,8 +24,19 @@ export type EndReason =
 // Events emitted by the backend
 
 export interface SampleEvent {
-  tMillis: number;
-  current_mA: number;
+  tMillis?: number;
+  current_mA?: number;
+  voltage_V?: number;
+  power_W?: number;
+  battery_level?: number;
+  charging_status?: string;
+  is_charging?: boolean;
+  device_detected?: boolean;
+  baseline_current?: number;
+  delta_mA?: number;
+  detection_threshold?: number;
+  calibration_complete?: boolean;
+  timestamp?: string;
 }
 
 export interface DetectorEvent {
