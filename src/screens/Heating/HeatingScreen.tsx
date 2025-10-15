@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
 import { useSessionStore } from '../../state';
 
@@ -26,6 +27,7 @@ export const HeatingScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const backendPhase = useSessionStore(state => state.backendPhase);
   const [progress, setProgress] = useState(0);
+  const soundRef = useRef<Audio.Sound | null>(null);
   
   const styles = StyleSheet.create({
     container: {
@@ -129,17 +131,42 @@ export const HeatingScreen: React.FC = () => {
 
   const circleSize = Math.max(screenWidth, screenHeight) * 1.9;
 
-  // Navigate based on backend phase changes
+  // ✅ SIMPLE SOLUTION: Play sound + navigate after 15 seconds
   useEffect(() => {
-    console.log('[HeatingScreen] Backend phase changed to:', backendPhase);
-    if (backendPhase === 'TREATMENT') {
-      console.log('[HeatingScreen] Navigating to Treatment screen');
+    console.log('[HeatingScreen] 🔥 Starting heating phase...');
+    
+    // Play sound
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sound/heat_loop_10s.wav'),
+          { shouldPlay: true, isLooping: true, volume: 1.0 }
+        );
+        soundRef.current = sound;
+        console.log('[HeatingScreen] 🔊 Playing heating sound loop');
+      } catch (e) {
+        console.log('[HeatingScreen] ❌ Sound error:', e);
+      }
+    })();
+    
+    // Navigate after 15 seconds
+    const timer = setTimeout(() => {
+      console.log('[HeatingScreen] ✅ 15 seconds passed - navigating to Treatment');
+      soundRef.current?.stopAsync().catch(() => {});
       navigation.navigate('Treatment' as never);
-    } else if (backendPhase === 'ABORT') {
-      console.log('[HeatingScreen] Navigating to Aborted screen');
-      navigation.navigate('Aborted' as never);
-    }
-  }, [backendPhase, navigation]);
+    }, 15000); // 15 seconds
+    
+    return () => {
+      clearTimeout(timer);
+      soundRef.current?.stopAsync().then(() => {
+        soundRef.current?.unloadAsync();
+      }).catch(() => {});
+    };
+  }, [navigation]);
 
   useEffect(() => {
     // Start filling animation (visual only, not tied to actual timing)

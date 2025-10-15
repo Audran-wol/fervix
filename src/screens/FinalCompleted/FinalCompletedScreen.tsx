@@ -5,6 +5,7 @@ import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
 
 export const FinalCompletedScreen: React.FC = () => {
@@ -12,6 +13,33 @@ export const FinalCompletedScreen: React.FC = () => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const animationRef = useRef<LottieView>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  // Play completion chime
+  useEffect(() => {
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          staysActiveInBackground: false,
+          playThroughEarpieceAndroid: false,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sound/done_chime_1s.wav'),
+          { shouldPlay: true, isLooping: false, volume: 1.0 }
+        );
+        soundRef.current = sound;
+        console.log('[FinalCompletedScreen] 🔔 Playing completion chime');
+      } catch (e) {
+        console.log('[FinalCompletedScreen] Sound init error:', e);
+      }
+    })();
+    
+    return () => {
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
+  }, []);
 
   useEffect(() => {
     animationRef.current?.play();

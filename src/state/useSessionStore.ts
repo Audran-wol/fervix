@@ -119,12 +119,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const { phase: backendPhase, remainingMs, reason } = event;
       const mappedPhase = mapBackendPhase(backendPhase);
 
-      console.log('[SessionStore] 🔄 PhaseChanged event received:', {
-        backendPhase,
-        remainingMs,
-        reason,
-        mappedPhase
-      });
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('[SessionStore] 🔄 PhaseChanged event received:');
+      console.log('  Phase:', backendPhase);
+      console.log('  Remaining:', remainingMs, 'ms');
+      console.log('  Reason:', reason || 'N/A');
+      console.log('  Mapped:', mappedPhase);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       set({
         backendPhase,

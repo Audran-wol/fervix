@@ -22,13 +22,17 @@ export default function App() {
       const activated = await checkActivation();
       setIsCheckingActivation(false);
       
-      // If activated, start power monitoring
+      // If activated, bind power controller and start monitoring
       if (activated) {
-        useSessionStore.getState().bindPowerController(PowerController);
-        console.log('[App] Device is activated. Starting global power monitoring...');
-        PowerController.startSession({ presetId: 'adult' }); // Default to adult profile
+        const store = useSessionStore.getState();
+        store.bindPowerController(PowerController);
+        console.log('[App] ✅ Device is activated. Power controller bound.');
+        
+        // Start monitoring session immediately (will be in PREHEAT_DETECT/IDLE until device detected)
+        console.log('[App] 🚀 Starting power monitoring session...');
+        store.requestStart({ presetId: 'adult' }); // Default profile, can be changed in Home
       } else {
-        console.log('[App] Device not activated. User needs to scan QR code.');
+        console.log('[App] ❌ Device not activated. User needs to scan QR code.');
       }
     } catch (error) {
       console.error('[App] Error during initialization:', error);

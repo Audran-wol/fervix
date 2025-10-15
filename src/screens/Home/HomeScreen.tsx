@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import { ProfileCard, SettingToggleRow, InfoCard } from '../../components/ui';
@@ -32,8 +33,9 @@ export const HomeScreen: React.FC = () => {
   const { sensitive, setSensitive } = useSettingsStore();
   const [showDeviceImage, setShowDeviceImage] = useState(false);
   const [deviceConnected, setDeviceConnected] = useState(false);
-  const [deviceDetectionThreshold, setDeviceDetectionThreshold] = useState<number>(0.73);
+  const [deviceDetectionThreshold, setDeviceDetectionThreshold] = useState<number>(0.20);
   const scrollViewRef = useRef<ScrollView>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   // Refs to hold latest values for use in subscriber callbacks
   const thresholdRef = useRef(deviceDetectionThreshold);
@@ -43,11 +45,13 @@ export const HomeScreen: React.FC = () => {
   const startDebounceRef = useRef<number | null>(null);
   const START_DEBOUNCE_MS = 1500;
 
-  // Local baseline & filtering (don't rely on native baseline that drifts)
-  const [localBase, setLocalBase] = useState<number | null>(null);
-  const emaRef = useRef<number | null>(null);          // filtered current
-  const dischargeNegativeRef = useRef<boolean | null>(null); // optional (not used if using deltaMag)
-  const ALPHA = 0.12; // ~3–5s time constant at ~4–8 Hz sampling
+  // USB attach prime (JS-side window in case OEM doesn't send attach_window_active each sample)
+  const usbPrimeUntilRef = useRef<number>(0);
+  const USB_PRIME_MS = 3000;
+
+  // thresholds
+  const INSIDE_WINDOW_THR = 0.06; // permissive for 3s after USB attach (your "UI mA" units)
+  const OUTSIDE_WINDOW_THR = 0.50; // strict so drift/noise can't trigger
 
   // Keep threshold ref fresh + sync native
   useEffect(() => {
@@ -56,12 +60,12 @@ export const HomeScreen: React.FC = () => {
     console.log(`[HomeScreen] Threshold updated to: ${deviceDetectionThreshold}mA`);
   }, [deviceDetectionThreshold]);
 
-  // Hard-set the Home threshold to your measured draw (0.82 UI-units ~ 820 mA real)
+  // ✅ Fix #5: Align native threshold on mount
   useEffect(() => {
-    const TEST_THRESHOLD = 0.73;
+    const TEST_THRESHOLD = 0.20;
     setDeviceDetectionThreshold(TEST_THRESHOLD);
-    try { PowerController.setDeviceDetectionThreshold(TEST_THRESHOLD); } catch {}
-    console.log(`[HomeScreen] Applied test threshold: ${TEST_THRESHOLD} (UI units)`);
+    PowerController.setDeviceDetectionThreshold(TEST_THRESHOLD);
+    console.log(`[HomeScreen] Applied test threshold: ${TEST_THRESHOLD}`);
   }, []);
 
   // Method to update threshold from external source (like DevPowerScreen)
@@ -97,21 +101,6 @@ export const HomeScreen: React.FC = () => {
     const deltaMag = Math.abs(current - baseline);
     return deltaMag >= Math.abs(threshold);
   };
-
-  // Helper to filter and baseline (don't rely on native baseline that drifts)
-  function filterEMA(x: number): number {
-    if (emaRef.current == null) emaRef.current = x;
-    else emaRef.current = emaRef.current + ALPHA * (x - emaRef.current);
-    return emaRef.current!;
-  }
-
-  function updateLocalBaseline(x: number) {
-    // Only adapt baseline when NOT in detection debounce and NOT connected
-    if (startDebounceRef.current !== null || connectedRef.current) return;
-    // Initialize or gently adapt
-    if (localBase == null) setLocalBase(x);
-    else setLocalBase(prev => prev == null ? x : prev + ALPHA * (x - prev));
-  }
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
@@ -253,6 +242,40 @@ export const HomeScreen: React.FC = () => {
   const deviceImagePulse = useRef(new Animated.Value(0)).current;
   const deviceImageImpulse = useRef(new Animated.Value(1)).current;
 
+  // ✅ Fix #4: Initialize audio once with proper mode
+  useEffect(() => {
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          staysActiveInBackground: false,
+          playThroughEarpieceAndroid: false,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sound/sound-alert-device-turn-on-turn-off-win-done-chakongaudio-174892.mp3'),
+          { shouldPlay: false, volume: 1.0 }
+        );
+        soundRef.current = sound;
+      } catch (e) {
+        console.log('[HomeScreen] Audio init error', e);
+      }
+    })();
+    return () => {
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
+  }, []);
+
+  const playDetectedSound = async () => {
+    try {
+      const s = soundRef.current;
+      if (!s) return;
+      await s.replayAsync(); // ensures play from start
+    } catch (e) {
+      console.log('[HomeScreen] Sound play error', e);
+    }
+  };
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -274,18 +297,14 @@ export const HomeScreen: React.FC = () => {
     ).start();
   }, [bob, pulsePhase, deviceImageImpulse]);
 
-      // HomeScreen detection - only when Home is focused
+      // ✅ HomeScreen detection - only when Home is focused
       useEffect(() => {
         if (!isFocused) return; // only run when Home is visible
 
-        console.log('[HomeScreen] startSession + subscribe(Sample)');
-        PowerController.startSession({ presetId: profile });
+        console.log('[HomeScreen] 👀 Focus detected - subscribing to power events');
+        console.log('[HomeScreen] Current phase:', useSessionStore.getState().backendPhase);
 
         const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
-          const curRaw = Number.isFinite(event.current_mA) ? event.current_mA! : undefined;
-          if (curRaw === undefined) return;
-
-          // OPTIONAL: pause while charging (many devices misreport deltas then)
           if (event.is_charging) {
             startDebounceRef.current = null;
             if (connectedRef.current) {
@@ -297,19 +316,33 @@ export const HomeScreen: React.FC = () => {
             return;
           }
 
-          // 1) Filter current (smoother & more robust)
-          const cur = filterEMA(curRaw);
+          // ✅ Require native calibration to be complete
+          if ((event as any)?.calibration_complete === false) {
+            // keep adapting baseline etc., but don't arm debounce or fire UI
+            startDebounceRef.current = null;
+            return;
+          }
 
-          // 2) Maintain our own baseline while idle (don't rely on native baseline)
-          updateLocalBaseline(cur);
-          const base = localBase ?? cur; // first few samples
+          const cur  = Number(event.current_mA);
+          const base = Number(event.baseline_current);
 
-          // 3) Delta magnitude against our frozen/adaptive baseline
-          const thr = thresholdRef.current;
-          const deltaMag = Math.abs(cur - base);
-          const detectedNow = Number.isFinite(deltaMag) && Number.isFinite(thr) && deltaMag >= Math.abs(thr);
+          // prefer native delta if present; else compute
+          let deltaMag = Number.isFinite((event as any).delta_mA)
+            ? Math.abs(Number((event as any).delta_mA))
+            : (Number.isFinite(cur) && Number.isFinite(base) ? Math.abs(cur - base) : NaN);
+          if (!Number.isFinite(deltaMag)) return;
 
-          // 4) Debounce (sustained ≥ 1.5s)
+          // Are we inside the attach window?
+          const nativeAttach = !!(event as any).attach_window_active;
+          const jsAttach = Date.now() < usbPrimeUntilRef.current;
+          const inAttachWindow = nativeAttach || jsAttach;
+
+          // Effective threshold
+          const thr = inAttachWindow ? INSIDE_WINDOW_THR : OUTSIDE_WINDOW_THR;
+
+          const detectedNow = deltaMag >= thr;
+
+          // Debounce
           const now = Date.now();
           if (detectedNow) {
             if (startDebounceRef.current === null) startDebounceRef.current = now;
@@ -321,14 +354,21 @@ export const HomeScreen: React.FC = () => {
             startDebounceRef.current !== null &&
             (now - startDebounceRef.current) >= START_DEBOUNCE_MS;
 
-          console.log(`[HomeScreen] cur=${cur.toFixed(3)} base=${(base??0).toFixed(3)} |Δ|=${deltaMag.toFixed(3)} thr=${thr} debounced=${debouncedDetected}`);
+          console.log(`[HomeScreen] cur=${cur?.toFixed(3)} base=${base?.toFixed(3)} |Δ|=${deltaMag.toFixed(3)} thr=${thr} inAttach=${inAttachWindow} debounced=${debouncedDetected}`);
 
-          // 5) Fire once when debounced; freeze baseline while connected
+          // ✅ SIMPLE: Show UI, play sound, and navigate after 3 seconds
           if (debouncedDetected && !connectedRef.current) {
             connectedRef.current = true;
             setDeviceConnected(true);
             setShowDeviceImage(true);
-            console.log('[HomeScreen] 🔌 Device detected — starting flow');
+
+            // Play detection sound
+            playDetectedSound();
+
+            // Smooth auto-scroll
+            setTimeout(() => {
+              scrollViewRef.current?.scrollTo({ y: 200, animated: true });
+            }, 100);
 
             Animated.timing(deviceImagePulse, {
               toValue: 1,
@@ -337,22 +377,16 @@ export const HomeScreen: React.FC = () => {
               useNativeDriver: true,
             }).start();
 
+            console.log('[HomeScreen] 🔥 Device detected! Navigating to Heating in 3 seconds...');
+            
+            // Navigate after 3 seconds
             setTimeout(() => {
-              try {
-                const { requestStart } = useSessionStore.getState();
-                requestStart({ presetId: profile }); // kick off heating
-              } finally {
-                setShowDeviceImage(false);
-                setDeviceConnected(false);
-                connectedRef.current = false;
-                deviceImagePulse.setValue(0);
-                // On disconnect, allow baseline to adapt again
-                navigation.navigate('Heating' as never);
-              }
-            }, 5000);
+              console.log('[HomeScreen] ✅ Navigating to Heating screen');
+              navigation.navigate('Heating' as never);
+            }, 3000);
           }
 
-          // 6) If it dips below threshold before debounce or after, clean up
+          // If it dips below threshold before debounce or after, clean up
           if (!detectedNow && connectedRef.current && startDebounceRef.current === null) {
             connectedRef.current = false;
             setDeviceConnected(false);
@@ -361,13 +395,31 @@ export const HomeScreen: React.FC = () => {
           }
         });
 
+        // Subscribe to USB events for faster detection
+        const unsubUsb = PowerController.subscribe('Usb', (e: any) => {
+          if (
+            e?.type === 'USB_PORT_CHANGED' ||
+            e?.type === 'USB_DEVICE_ATTACHED' ||
+            e?.type === 'USB_STATE'
+          ) {
+            usbPrimeUntilRef.current = Date.now() + USB_PRIME_MS;
+            if (startDebounceRef.current === null) startDebounceRef.current = Date.now();
+            console.log('[HomeScreen] 🚦 USB event — opened JS attach window for 3s & primed debounce');
+          }
+        });
+
         // focus/cleanup
         return () => {
-          console.log('[HomeScreen] cleanup: unsubscribe + stopSession');
+          console.log('[HomeScreen] cleanup: unsubscribe only (session continues for workflow)');
           unsub();
-          PowerController.stopSession();
+          unsubUsb();
+          // DON'T stop session here - it needs to continue through Heating/Treatment/Cooling/Done phases
+          // PowerController.stopSession();
         };
       }, [isFocused, profile, navigation]);   // ⬅️ IMPORTANT: no deviceConnected here
+
+  // ✅ No longer using PhaseChanged for navigation - using timers for reliability
+
 
   const bobTranslate = bob.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] });
 
@@ -376,7 +428,7 @@ export const HomeScreen: React.FC = () => {
   const pulseScale = pulsePhase.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.6] });
   const pulseOpacity = pulsePhase.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.45, 0] });
 
-  // Handle device insertion click (manual trigger)
+  // Handle device insertion click (manual trigger) - DEPRECATED, relying on automatic detection now
   const handleDeviceInsertion = () => {
     setShowDeviceImage(true);
     setDeviceConnected(true);
@@ -389,17 +441,12 @@ export const HomeScreen: React.FC = () => {
       useNativeDriver: true,
     }).start();
 
-    // Start the power controller session using current profile
-    const { requestStart } = useSessionStore.getState();
-    requestStart({ presetId: profile });
+    // Play sound
+    playDetectedSound();
 
-    // Wait 5 seconds before navigating (same as automatic detection)
-    setTimeout(() => {
-      setShowDeviceImage(false);
-      setDeviceConnected(false);
-      deviceImagePulse.setValue(0);
-      navigation.navigate('Heating' as never);
-    }, 5000);
+    // ✅ Session should already be running from the focus effect
+    // Just wait for PhaseChanged to navigate
+    console.log('[HomeScreen] Manual trigger - waiting for PhaseChanged: HEATUP');
   };
 
   return (

@@ -4,6 +4,10 @@
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  
+  <!-- USB Host feature for device detection -->
+  <uses-feature android:name="android.hardware.usb.host" android:required="false"/>
+  <uses-feature android:name="android.hardware.usb.accessory" android:required="false"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>

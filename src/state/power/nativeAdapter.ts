@@ -10,6 +10,7 @@ import type {
   SampleHandler,
   DetectorHandler,
   PhaseChangedHandler,
+  UsbHandler,
 } from './contracts';
 
 const LINKING_ERROR =
@@ -70,6 +71,7 @@ export class NativePowerAdapter implements IPowerController {
   subscribe(event: 'Sample', handler: SampleHandler): () => void;
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
+  subscribe(event: 'Usb', handler: UsbHandler): () => void;
   subscribe(event: string, handler: any): () => void {
     console.log(`[NativePowerAdapter] === SUBSCRIBE DEBUG ===`);
     console.log(`[NativePowerAdapter] Event: ${event}`);

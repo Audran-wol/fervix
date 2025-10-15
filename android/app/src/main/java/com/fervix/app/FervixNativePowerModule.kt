@@ -7,6 +7,9 @@ import android.os.BatteryManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.BroadcastReceiver
+import android.hardware.usb.UsbManager
+import android.os.Build
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -22,9 +25,36 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     private var sessionParams: WritableMap? = null
     private val batteryManager = reactContext.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
     
+    // USB monitoring variables
+    private var usbManager: UsbManager? = null
+    private var usbPortCallback: Any? = null // Use Any to avoid compilation issues
+    private var usbReceiverRegistered = false
+    private var batteryReceiverRegistered = false
+    
+    // —— Attach-window helpers ——
+    @Volatile private var attachWindowUntil: Long = 0L
+    @Volatile private var attachBaseline: Double? = null
+    @Volatile private var attachArmed: Boolean = false
+    
+    // —— Sudden-step detector (on filtered current) ——
+    private var lastEma: Double? = null
+    
+    // Tunables (UI units = your mA scale)
+    private val ATTACH_WINDOW_MS = 3000L     // 3s permissive window after plug
+    private val ATTACH_DELTA_MIN_MA = 60.0   // small delta vs frozen baseline to accept during window
+    private val STEP_THRESHOLD_MA = 50.0     // single-tick "step" to accept during window
+    private val OUTSIDE_WINDOW_MIN_MA = 200.0// strict fallback when no attach signal (lowered to match real deltas)
+    
+    // USB polling fallback
+    private var lastDeviceListCount = -1
+    
+    // Battery/charging state for USB gate
+    private var lastIsCharging: Boolean = false
+    private var lastPlugType: Int = 0 // 0 none, 1 AC, 2 USB, 4 WIRELESS
+    
     // Device detection variables (POSITIVE magnitudes in mA)
-    private var deviceDetectionThreshold = 260.0 // mA magnitude for START
-    private var deviceDetectionEndThreshold = 150.0 // mA magnitude for END
+    private var deviceDetectionThreshold = 200.0 // mA magnitude for START (lowered to match real deltas)
+    private var deviceDetectionEndThreshold = 100.0 // mA magnitude for END (hysteresis)
     private var baselineCurrent = 0.0
     private var lastDeviceConnected = false
     private var samplesForBaseline = mutableListOf<Double>()
@@ -42,15 +72,80 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     private var startCandidateTime: Long? = null
     private var endCandidateTime: Long? = null
     private var isHeating = false
-    private val START_DEBOUNCE_MS = 1500L
+    private val START_DEBOUNCE_MS = 800L  // Faster detection: 0.8s instead of 1.5s
     private val END_DEBOUNCE_MS = 1500L
 
     // Calibration
     private var calibrationComplete = false
-    private val CALIBRATION_DURATION_MS = 8000L
+    private val CALIBRATION_DURATION_MS = 3000L  // Reduced to 3s for faster UX
 
     // Phase management
     private var currentPhase = "IDLE"
+
+    // USB event receivers
+    private val usbAttachReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context?, intent: Intent?) {
+            when (intent?.action) {
+                UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                    Log.d(TAG, "⚡ USB device attached")
+                    emitUsbEvent("USB_DEVICE_ATTACHED", null)
+                    // Open attach window only if not charging (USB port available for device)
+                    if (!lastIsCharging && lastPlugType == 0) {
+                        Log.d(TAG, "✅ USB attached while NOT charging - opening attach window")
+                        scheduleAttachWindow()
+                    } else {
+                        Log.d(TAG, "❌ USB attached but phone is charging (isCharging=${lastIsCharging}, plugType=${lastPlugType}) - ignoring")
+                    }
+                }
+                UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                    Log.d(TAG, "USB device detached")
+                    emitUsbEvent("USB_DEVICE_DETACHED", null)
+                    closeAttachWindow()
+                }
+                // Some OEMs still deliver this sticky broadcast
+                "android.hardware.usb.action.USB_STATE" -> {
+                    val connected = intent.getBooleanExtra("connected", false)
+                    val host = intent.getBooleanExtra("host_connected", false)
+                    val configured = intent.getBooleanExtra("configured", false)
+                    val fn = intent.getStringExtra("configured_functions") ?: ""
+                    
+                    Log.d(TAG, "⚡ USB_STATE: connected=$connected, host=$host, configured=$configured, functions=$fn")
+                    
+                    val map = Arguments.createMap().apply {
+                        putBoolean("connected", connected)
+                        putBoolean("host_connected", host)
+                        putBoolean("configured", configured)
+                        putString("functions", fn)
+                    }
+                    emitUsbEvent("USB_STATE", map)
+                    
+                    // Open attach window only if USB connected AND not charging
+                    if ((host || connected) && !lastIsCharging && lastPlugType == 0) {
+                        Log.d(TAG, "✅ USB connected while NOT charging - opening attach window")
+                        scheduleAttachWindow()
+                    } else if ((host || connected)) {
+                        Log.d(TAG, "❌ USB connected but phone is charging (isCharging=${lastIsCharging}, plugType=${lastPlugType}) - ignoring")
+                    }
+                }
+            }
+        }
+    }
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_BATTERY_CHANGED) {
+                val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)
+                val wasCharging = lastIsCharging
+                lastIsCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                lastPlugType = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+                
+                // Log charging state changes
+                if (wasCharging != lastIsCharging) {
+                    Log.d(TAG, "🔋 Charging state changed: isCharging=${lastIsCharging}, plugType=${lastPlugType} (0=none, 1=AC, 2=USB, 4=wireless)")
+                }
+            }
+        }
+    }
     private var sessionStartTime = 0L
     private var lastPhaseChangeTime = 0L
     private var heatupStartTime: Long? = null
@@ -85,6 +180,10 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
             isHeating = false
             startCandidateTime = null
             endCandidateTime = null
+            
+            // Start USB monitoring and polling
+            startUsbMonitoring()
+            startUsbPoller()
             heatupStartTime = null
             treatmentStartTime = null
             cooldownStartTime = null
@@ -187,17 +286,25 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
         coroutineScope.launch {
             while (isSessionActive) {
                 try {
+                    val now = System.currentTimeMillis()
+                    
+                    // Auto-expire attach window after time passes (safety)
+                    if (attachArmed && now > attachWindowUntil) {
+                        closeAttachWindow()
+                    }
+                    
                     // PM Fix #4: Check if charging and block detection
                     val batteryInfo = getBatteryInfo()
                     val charging = batteryInfo["is_charging"] as Boolean
                     
                     if (charging) {
                         // Hard-block detection while charging
+                        closeAttachWindow()
                         sendEvent("Sample", Arguments.createMap().apply {
                             putString("state", "PAUSED_CHARGING")
                             putBoolean("is_charging", true)
                             putBoolean("calibration_complete", calibrationComplete)
-                            putString("timestamp", System.currentTimeMillis().toString())
+                            putString("timestamp", now.toString())
                         })
                         delay(SAMPLE_MS)
                         continue
@@ -230,6 +337,7 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
                         putDouble("delta_mA", deltaMagnitude) // positive = more drain
                         putDouble("detection_threshold", deviceDetectionThreshold)
                         putBoolean("calibration_complete", calibrationComplete)
+                        putBoolean("attach_window_active", attachArmed && (System.currentTimeMillis() <= attachWindowUntil))
                         putString("timestamp", System.currentTimeMillis().toString())
                     })
                     
@@ -250,6 +358,7 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     // PM Fix #3: EMA low-pass filter for noise reduction
     private fun filter(current: Double): Double {
         ema = if (ema == null) current else (ema!! + ALPHA * (current - ema!!))
+        lastEma = ema
         return ema!!
     }
     
@@ -315,7 +424,10 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     }
 
     private fun checkPhaseChanges() {
-        if (!isSessionActive) return
+        if (!isSessionActive) {
+            Log.d(TAG, "⏸️ checkPhaseChanges: session not active")
+            return
+        }
         
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - sessionStartTime
@@ -324,6 +436,7 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
         if (!calibrationComplete) {
             if (elapsedTime >= CALIBRATION_DURATION_MS) {
                 calibrationComplete = true
+                Log.d(TAG, "✅✅✅ CALIBRATION COMPLETE - Detection now active! Baseline: ${"%.2f".format(baselineCurrent)}mA")
                 
                 // PM Fix #1: Auto-detect discharge direction
                 dischargeNegative = baselineCurrent < 0
@@ -335,10 +448,14 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
         }
         
         // Phase transitions based on heating detection and timers
+        Log.d(TAG, "🔍 checkPhaseChanges: currentPhase=$currentPhase, heatupStartTime=$heatupStartTime, treatmentStartTime=$treatmentStartTime")
+        
         when (currentPhase) {
             "HEATUP" -> {
-                // After 15s of heating, move to TREATMENT
-                if (heatupStartTime != null && currentTime - heatupStartTime!! >= 15000 && isHeating) {
+                val elapsed = if (heatupStartTime != null) currentTime - heatupStartTime!! else 0
+                Log.d(TAG, "⏱️ HEATUP elapsed: ${elapsed}ms / 15000ms")
+                // After 15s of heating, move to TREATMENT (don't require isHeating - complete workflow once started)
+                if (heatupStartTime != null && elapsed >= 15000) {
                     currentPhase = "TREATMENT"
                     treatmentStartTime = currentTime
                     lastPhaseChangeTime = currentTime
@@ -352,8 +469,10 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
                 }
             }
             "TREATMENT" -> {
-                // After 20s of treatment, move to COOLDOWN
-                if (treatmentStartTime != null && currentTime - treatmentStartTime!! >= 20000 && isHeating) {
+                val elapsed = if (treatmentStartTime != null) currentTime - treatmentStartTime!! else 0
+                Log.d(TAG, "⏱️ TREATMENT elapsed: ${elapsed}ms / 20000ms")
+                // After 20s of treatment, move to COOLDOWN (don't require isHeating - complete workflow once started)
+                if (treatmentStartTime != null && elapsed >= 20000) {
                     currentPhase = "COOLDOWN"
                     cooldownStartTime = currentTime
                     lastPhaseChangeTime = currentTime
@@ -367,8 +486,10 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
                 }
             }
             "COOLDOWN" -> {
+                val elapsed = if (cooldownStartTime != null) currentTime - cooldownStartTime!! else 0
+                Log.d(TAG, "⏱️ COOLDOWN elapsed: ${elapsed}ms / 10000ms")
                 // After 10s of cooldown, move to DONE
-                if (cooldownStartTime != null && currentTime - cooldownStartTime!! >= 10000) {
+                if (cooldownStartTime != null && elapsed >= 10000) {
                     currentPhase = "DONE"
                     lastPhaseChangeTime = currentTime
                     
@@ -387,8 +508,8 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
 
     // PM Fix #2: Only update baseline when inactive
     private fun updateBaseline(current: Double) {
-        // Freeze baseline during and near detection
-        if (isHeating || startCandidateTime != null) {
+        // Freeze baseline during detection, debounce, or attach window
+        if (isHeating || startCandidateTime != null || attachArmed) {
             return
         }
         
@@ -412,63 +533,70 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     private fun checkDeviceDetection(current: Double): Boolean {
         if (!calibrationComplete) return false
 
-        // PM Fix #1: Direction-agnostic delta (positive = more drain than baseline)
-        val d = deltaMag(current, baselineCurrent)
         val now = System.currentTimeMillis()
+        val inAttachWindow = (now <= attachWindowUntil) && attachArmed
 
-        Log.d(TAG, "🔍 Detection: current=${current}mA, baseline=${baselineCurrent}mA, deltaMag=${d}mA, threshold=${deviceDetectionThreshold}mA, isHeating=${isHeating}")
+        // Direction-agnostic "more drain than baseline"
+        val dGlobal = deltaMag(current, baselineCurrent)
+        val dAttach = attachBaseline?.let { deltaMag(current, it) } ?: 0.0
+        val step = if (lastEma != null) Math.abs(current - lastEma!!) else 0.0
+
+        // Start rules:
+        //  - Inside attach window: accept small delta vs frozen baseline OR a single step spike
+        //  - Outside window: use strict threshold (max of configured and OUTSIDE_WINDOW_MIN_MA)
+        val startAllowed = if (inAttachWindow) {
+            (dAttach >= ATTACH_DELTA_MIN_MA) || (step >= STEP_THRESHOLD_MA)
+        } else {
+            dGlobal >= Math.max(deviceDetectionThreshold, OUTSIDE_WINDOW_MIN_MA)
+        }
+
+        Log.d(TAG, "🔍 Detect: cur=${"%.2f".format(current)} base=${"%.2f".format(baselineCurrent)} " +
+                "dGlobal=${"%.1f".format(dGlobal)} dAttach=${"%.1f".format(dAttach)} step=${"%.1f".format(step)} " +
+                "inWin=$inAttachWindow startAllowed=$startAllowed isHeating=$isHeating")
 
         if (!isHeating) {
-            // START condition: d >= threshold (device draws threshold mA or more)
-            if (d >= deviceDetectionThreshold) {
+            // START condition: use effective threshold
+            if (startAllowed) {
                 if (startCandidateTime == null) {
                     startCandidateTime = now
-                    Log.d(TAG, "🔥 Start candidate: deltaMag=${d}mA >= ${deviceDetectionThreshold}mA")
                 } else if (now - startCandidateTime!! >= START_DEBOUNCE_MS) {
-                    // Confirmed START
                     isHeating = true
                     startCandidateTime = null
                     endCandidateTime = null
-                    
-                    Log.d(TAG, "🔥 START_HEAT confirmed! deltaMag=${d}mA sustained for ${START_DEBOUNCE_MS}ms")
-                    sendEvent("Detector", map("type", "START_HEAT", "delta_mA", d, "tMillis", now))
-                    
-                    // Transition to HEATUP phase
+                    closeAttachWindow()  // prevent re-firing
+
+                    Log.d(TAG, "🔥🔥🔥 START_HEAT confirmed! Setting phase to HEATUP")
+                    sendEvent("Detector", map("type","START_HEAT","delta_mA",dGlobal,"tMillis",now))
                     if (currentPhase == "PREHEAT_DETECT") {
                         currentPhase = "HEATUP"
                         heatupStartTime = now
                         lastPhaseChangeTime = now
+                        Log.d(TAG, "📡📡📡 Sending PhaseChanged: HEATUP")
                         sendPhase("HEATUP", 15000L)
+                        Log.d(TAG, "✅✅✅ PhaseChanged: HEATUP sent successfully")
+                    } else {
+                        Log.w(TAG, "⚠️ Not sending HEATUP - currentPhase is: $currentPhase")
                     }
                 }
             } else {
-                // Delta dropped below threshold - cancel candidate
                 startCandidateTime = null
             }
         } else {
-            // END condition: d <= end threshold (device stopped drawing significant power)
-            if (d <= deviceDetectionEndThreshold) {
-                if (endCandidateTime == null) {
-                    endCandidateTime = now
-                    Log.d(TAG, "❄️ End candidate: deltaMag=${d}mA <= ${deviceDetectionEndThreshold}mA")
-                } else if (now - endCandidateTime!! >= END_DEBOUNCE_MS) {
-                    // Confirmed END
+            // END when global delta falls below end threshold (hysteresis)
+            if (dGlobal <= deviceDetectionEndThreshold) {
+                if (endCandidateTime == null) endCandidateTime = now
+                else if (now - endCandidateTime!! >= END_DEBOUNCE_MS) {
                     isHeating = false
                     endCandidateTime = null
                     startCandidateTime = null
-                    
-                    Log.d(TAG, "❄️ END_HEAT confirmed! deltaMag=${d}mA sustained for ${END_DEBOUNCE_MS}ms")
-                    sendEvent("Detector", map("type", "END_HEAT", "delta_mA", d, "tMillis", now))
-                    
-                    // Abort session if heating stopped prematurely
+                    sendEvent("Detector", map("type","END_HEAT","delta_mA",dGlobal,"tMillis",now))
                     if (currentPhase != "COOLDOWN" && currentPhase != "DONE") {
                         currentPhase = "ABORT"
                         lastPhaseChangeTime = now
-                        sendEvent("PhaseChanged", map("phase", "ABORT", "reason", "LOST_SIGNAL", "timestamp", now.toString()))
+                        sendEvent("PhaseChanged", map("phase","ABORT","reason","LOST_SIGNAL","timestamp", now.toString()))
                     }
                 }
             } else {
-                // Delta rose above end threshold - cancel candidate
                 endCandidateTime = null
             }
         }
@@ -536,6 +664,188 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
                 .emit(eventName, params)
         } catch (e: Exception) {
             Log.e(TAG, "Error sending event: $eventName", e)
+        }
+    }
+
+    // USB helper functions
+    private fun emitUsbEvent(type: String, extra: WritableMap?) {
+        val m = Arguments.createMap().apply {
+            putString("type", type)
+            putString("timestamp", System.currentTimeMillis().toString())
+            if (extra != null) merge(extra)
+        }
+        sendEvent("Usb", m)
+    }
+
+    private fun scheduleAttachWindow() {
+        attachWindowUntil = System.currentTimeMillis() + ATTACH_WINDOW_MS
+        attachBaseline = baselineCurrent            // snapshot baseline at plug time
+        attachArmed = true
+        Log.d(TAG, "🚦 Attach window opened (${ATTACH_WINDOW_MS}ms), attachBaseline=${"%.2f".format(attachBaseline)} mA")
+        emitUsbEvent("ATTACH_WINDOW_OPENED", null)   // Make window visible to JS
+    }
+
+    private fun closeAttachWindow() {
+        attachWindowUntil = 0L
+        attachBaseline = null
+        attachArmed = false
+        emitUsbEvent("ATTACH_WINDOW_CLOSED", null)
+    }
+
+    private fun maybeOpenAttachWindowByRoles(connected: Boolean, powerRole: Int?, dataRole: Int?) {
+        // Use reflection to get USB port constants
+        val POWER_ROLE_SOURCE = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                Class.forName("android.hardware.usb.UsbPort").getField("POWER_ROLE_SOURCE").getInt(null)
+            } else 1
+        } catch (e: Exception) { 1 }
+        
+        val DATA_ROLE_HOST = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                Class.forName("android.hardware.usb.UsbPort").getField("DATA_ROLE_HOST").getInt(null)
+            } else 2
+        } catch (e: Exception) { 2 }
+        
+        val isSource = powerRole == POWER_ROLE_SOURCE
+        val isHost   = dataRole == DATA_ROLE_HOST
+        val okRoles  = connected && (isSource || isHost)
+        val okPower  = !lastIsCharging && lastPlugType == 0  // not plugged to AC/USB/wireless
+
+        Log.d(TAG, "USB role gate: connected=$connected, isSource=$isSource, isHost=$isHost, " +
+                "isCharging=$lastIsCharging, plugType=$lastPlugType, gate=${okRoles && okPower}")
+
+        if (okRoles && okPower) {
+            scheduleAttachWindow() // 3s window where current-delta can confirm
+        }
+    }
+
+    private fun startUsbMonitoring() {
+        if (usbManager == null) usbManager = reactApplicationContext.getSystemService(Context.USB_SERVICE) as UsbManager
+
+        // --- Dynamic broadcast receiver (with flags on API 33+) ---
+        if (!usbReceiverRegistered) {
+            val f = IntentFilter().apply {
+                addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+                addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+                addAction("android.hardware.usb.action.USB_STATE")
+            }
+            if (Build.VERSION.SDK_INT >= 33) {
+                reactApplicationContext.registerReceiver(usbAttachReceiver, f, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                reactApplicationContext.registerReceiver(usbAttachReceiver, f)
+            }
+            usbReceiverRegistered = true
+        }
+
+        // --- Battery receiver ---
+        if (!batteryReceiverRegistered) {
+            val bf = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            if (Build.VERSION.SDK_INT >= 33) {
+                reactApplicationContext.registerReceiver(batteryReceiver, bf, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                reactApplicationContext.registerReceiver(batteryReceiver, bf)
+            }
+            batteryReceiverRegistered = true
+        }
+
+        // Port role callback (API 28+) - use reflection for compatibility
+        if (usbPortCallback == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                // Use reflection to create PortListener
+                val portListenerClass = Class.forName("android.hardware.usb.UsbManager\$PortListener")
+                val usbPortClass = Class.forName("android.hardware.usb.UsbPort")
+                val usbPortStatusClass = Class.forName("android.hardware.usb.UsbPortStatus")
+                
+                usbPortCallback = java.lang.reflect.Proxy.newProxyInstance(
+                    portListenerClass.classLoader,
+                    arrayOf(portListenerClass)
+                ) { _, method, args ->
+                    if (method.name == "onPortChanged") {
+                        try {
+                            val port = args!![0]
+                            val status = args[1]
+                            
+                            // Use reflection to get values
+                            val isConnected = status.javaClass.getMethod("isConnected").invoke(status) as Boolean
+                            val powerRole = status.javaClass.getMethod("getCurrentPowerRole").invoke(status) as Int
+                            val dataRole = status.javaClass.getMethod("getCurrentDataRole").invoke(status) as Int
+                            
+                            val POWER_ROLE_SOURCE = usbPortClass.getField("POWER_ROLE_SOURCE").getInt(null)
+                            val POWER_ROLE_SINK = usbPortClass.getField("POWER_ROLE_SINK").getInt(null)
+                            val DATA_ROLE_HOST = usbPortClass.getField("DATA_ROLE_HOST").getInt(null)
+                            val DATA_ROLE_DEVICE = usbPortClass.getField("DATA_ROLE_DEVICE").getInt(null)
+                            
+                            val canSource = isConnected && powerRole == POWER_ROLE_SOURCE
+                            val isHost = isConnected && dataRole == DATA_ROLE_HOST
+
+                            val map = Arguments.createMap().apply {
+                                putBoolean("connected", isConnected)
+                                putString("powerRole",
+                                    when (powerRole) {
+                                        POWER_ROLE_SOURCE -> "SOURCE"
+                                        POWER_ROLE_SINK -> "SINK"
+                                        else -> "UNKNOWN"
+                                    })
+                                putString("dataRole",
+                                    when (dataRole) {
+                                        DATA_ROLE_HOST -> "HOST"
+                                        DATA_ROLE_DEVICE -> "DEVICE"
+                                        else -> "UNKNOWN"
+                                    })
+                                putBoolean("canSourcePower", canSource)
+                                putBoolean("isHost", isHost)
+                            }
+                            emitUsbEvent("USB_PORT_CHANGED", map)
+
+                            // If we became power SOURCE or HOST, open the attach window
+                            maybeOpenAttachWindowByRoles(isConnected, powerRole, dataRole)
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "Usb port callback error", t)
+                        }
+                    }
+                    null
+                }
+                
+                // Register the callback using reflection
+                val registerMethod = usbManager!!.javaClass.getMethod(
+                    "registerPortCallback", 
+                    java.util.concurrent.Executor::class.java,
+                    portListenerClass
+                )
+                registerMethod.invoke(usbManager, reactApplicationContext.mainExecutor, usbPortCallback)
+                
+                Log.d(TAG, "USB port callback registered successfully")
+            } catch (t: Throwable) {
+                Log.w(TAG, "USB port callback not available or failed to register", t)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun forceAttachWindow(promise: Promise) {
+        scheduleAttachWindow()
+        promise.resolve(true)
+    }
+
+    private fun startUsbPoller() {
+        coroutineScope.launch {
+            while (isSessionActive) {
+                try {
+                    val count = try { usbManager?.deviceList?.size ?: 0 } catch (_: Throwable) { 0 }
+                    if (lastDeviceListCount != -1 && count > 0 && lastDeviceListCount == 0 && !lastIsCharging && lastPlugType == 0) {
+                        Log.d(TAG, "🔄 USB poller detected devices count change 0 -> $count, opening attach window")
+                        scheduleAttachWindow()
+                        emitUsbEvent("USB_POLLED_ATTACH", null)
+                    }
+                    lastDeviceListCount = count
+                } catch (t: Throwable) {
+                    Log.w(TAG, "USB poller error", t)
+                }
+                delay(300)
+            }
+            lastDeviceListCount = -1
         }
     }
 

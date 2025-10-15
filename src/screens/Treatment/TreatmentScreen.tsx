@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
 import { useSessionStore } from '../../state';
 
@@ -24,6 +25,7 @@ export const TreatmentScreen: React.FC = () => {
   const screenFill = useRef(new Animated.Value(0)).current;
   const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
   const textColorAnimation = useRef(new Animated.Value(0)).current;
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   // === Sizing (unchanged) =====================================================
   const CARD = Math.min(W, H) * 0.70;
@@ -45,14 +47,42 @@ export const TreatmentScreen: React.FC = () => {
    const HAND_TOP   = CARD * 0.05;   // hand sits higher in the circle
   // ===========================================================================
 
-  // Navigate based on backend phase changes
+  // ✅ SIMPLE SOLUTION: Play sound + navigate after 20 seconds
   useEffect(() => {
-    if (backendPhase === 'COOLDOWN' || backendPhase === 'DONE') {
+    console.log('[TreatmentScreen] 💚 Starting treatment phase...');
+    
+    // Play sound
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sound/treatment_loop_25s.wav'),
+          { shouldPlay: true, isLooping: true, volume: 1.0 }
+        );
+        soundRef.current = sound;
+        console.log('[TreatmentScreen] 🔊 Playing treatment sound loop');
+      } catch (e) {
+        console.log('[TreatmentScreen] ❌ Sound error:', e);
+      }
+    })();
+    
+    // Navigate after 20 seconds
+    const timer = setTimeout(() => {
+      console.log('[TreatmentScreen] ✅ 20 seconds passed - navigating to Cooling');
+      soundRef.current?.stopAsync().catch(() => {});
       navigation.navigate('Cooling' as never);
-    } else if (backendPhase === 'ABORT') {
-      navigation.navigate('Aborted' as never);
-    }
-  }, [backendPhase, navigation]);
+    }, 20000); // 20 seconds
+    
+    return () => {
+      clearTimeout(timer);
+      soundRef.current?.stopAsync().then(() => {
+        soundRef.current?.unloadAsync();
+      }).catch(() => {});
+    };
+  }, [navigation]);
 
   // Update countdown from store's remainingMs
   useEffect(() => {

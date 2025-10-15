@@ -51,10 +51,24 @@ export interface PhaseChangedEvent {
   reason?: EndReason;
 }
 
+export interface UsbEvent {
+  type: 'USB_PORT_CHANGED' | 'USB_DEVICE_ATTACHED' | 'USB_DEVICE_DETACHED' | 'USB_STATE';
+  timestamp: string;
+  connected?: boolean;
+  powerRole?: 'SOURCE' | 'SINK' | 'UNKNOWN';
+  dataRole?: 'HOST' | 'DEVICE' | 'UNKNOWN';
+  canSourcePower?: boolean;
+  isHost?: boolean;
+  host_connected?: boolean;
+  configured?: boolean;
+  functions?: string;
+}
+
 // Event handler types
 export type SampleHandler = (event: SampleEvent) => void;
 export type DetectorHandler = (event: DetectorEvent) => void;
 export type PhaseChangedHandler = (event: PhaseChangedEvent) => void;
+export type UsbHandler = (event: UsbEvent) => void;
 
 // Controller interface - the only API the app should use
 export interface IPowerController {
@@ -63,6 +77,7 @@ export interface IPowerController {
   subscribe(event: 'Sample', handler: SampleHandler): () => void;
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
+  subscribe(event: 'Usb', handler: UsbHandler): () => void;
   getSnapshot(): { 
     phase: Phase; 
     baseline_mA?: number; 

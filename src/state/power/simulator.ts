@@ -15,6 +15,7 @@ import type {
   SampleHandler,
   DetectorHandler,
   PhaseChangedHandler,
+  UsbHandler,
   PresetConfig,
 } from './contracts';
 
@@ -26,6 +27,7 @@ export class PowerSimulator implements IPowerController {
   private sampleListeners: SampleHandler[] = [];
   private detectorListeners: DetectorHandler[] = [];
   private phaseListeners: PhaseChangedHandler[] = [];
+  private usbListeners: UsbHandler[] = [];
   
   private traceIndex = 0;
   private trace: SampleEvent[] = [];
@@ -88,6 +90,7 @@ export class PowerSimulator implements IPowerController {
   subscribe(event: 'Sample', handler: SampleHandler): () => void;
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
+  subscribe(event: 'Usb', handler: UsbHandler): () => void;
   subscribe(event: string, handler: any): () => void {
     if (event === 'Sample') {
       this.sampleListeners.push(handler);
@@ -103,6 +106,11 @@ export class PowerSimulator implements IPowerController {
       this.phaseListeners.push(handler);
       return () => {
         this.phaseListeners = this.phaseListeners.filter(h => h !== handler);
+      };
+    } else if (event === 'Usb') {
+      this.usbListeners.push(handler);
+      return () => {
+        this.usbListeners = this.usbListeners.filter(h => h !== handler);
       };
     }
     

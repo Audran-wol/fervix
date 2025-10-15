@@ -10,6 +10,7 @@ import type {
   SampleHandler,
   DetectorHandler,
   PhaseChangedHandler,
+  UsbHandler,
 } from './contracts';
 
 // Feature flag - set to false to use native implementation
@@ -45,6 +46,7 @@ class PowerControllerSingleton implements IPowerController {
   subscribe(event: 'Sample', handler: SampleHandler): () => void;
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
+  subscribe(event: 'Usb', handler: UsbHandler): () => void;
   subscribe(event: any, handler: any): () => void {
     return this.implementation.subscribe(event, handler);
   }
