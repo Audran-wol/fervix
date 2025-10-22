@@ -18,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
 import { useSessionStore } from '../../state';
+import { useSettingsStore } from '../../state/useSettingsStore';
+import * as Haptics from 'expo-haptics';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -26,6 +28,7 @@ export const HeatingScreen: React.FC = () => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const backendPhase = useSessionStore(state => state.backendPhase);
+  const { soundOn, vibrationOn } = useSettingsStore();
   const [progress, setProgress] = useState(0);
   const soundRef = useRef<Audio.Sound | null>(null);
   
@@ -131,51 +134,69 @@ export const HeatingScreen: React.FC = () => {
 
   const circleSize = Math.max(screenWidth, screenHeight) * 1.9;
 
-  // ✅ SIMPLE SOLUTION: Play sound + navigate after 15 seconds
+  // ✅ SIMPLE SOLUTION: Play sound/vibration + navigate after 8 seconds (faster)
   useEffect(() => {
     console.log('[HeatingScreen] 🔥 Starting heating phase...');
     
-    // Play sound
-    (async () => {
-      try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-        });
-        const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/sound/heat_loop_10s.wav'),
-          { shouldPlay: true, isLooping: true, volume: 1.0 }
-        );
-        soundRef.current = sound;
-        console.log('[HeatingScreen] 🔊 Playing heating sound loop');
-      } catch (e) {
-        console.log('[HeatingScreen] ❌ Sound error:', e);
-      }
-    })();
+    // Play sound if enabled
+    if (soundOn) {
+      (async () => {
+        try {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: true,
+          });
+          const { sound } = await Audio.Sound.createAsync(
+            require('../../assets/sound/heat_loop_10s.wav'),
+            { shouldPlay: true, isLooping: true, volume: 1.0 }
+          );
+          soundRef.current = sound;
+          console.log('[HeatingScreen] 🔊 Playing heating sound loop');
+        } catch (e) {
+          console.log('[HeatingScreen] ❌ Sound error:', e);
+        }
+      })();
+    }
     
-    // Navigate after 15 seconds
+    // Start vibration pattern if enabled
+    let vibrationInterval: NodeJS.Timeout | null = null;
+    if (vibrationOn) {
+      vibrationInterval = setInterval(async () => {
+        try {
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } catch (e) {
+          console.log('[HeatingScreen] ❌ Vibration error:', e);
+        }
+      }, 2000); // Vibrate every 2 seconds
+      console.log('[HeatingScreen] 📳 Starting heating vibration pattern');
+    }
+    
+    // Navigate after 10 seconds (smooth transition)
     const timer = setTimeout(() => {
-      console.log('[HeatingScreen] ✅ 15 seconds passed - navigating to Treatment');
+      console.log('[HeatingScreen] ✅ 10 seconds passed - navigating to Treatment');
       soundRef.current?.stopAsync().catch(() => {});
+      if (vibrationInterval) clearInterval(vibrationInterval);
       navigation.navigate('Treatment' as never);
-    }, 15000); // 15 seconds
+    }, 10000); // 10 seconds - smooth transition!
     
     return () => {
       clearTimeout(timer);
+      if (vibrationInterval) clearInterval(vibrationInterval);
       soundRef.current?.stopAsync().then(() => {
         soundRef.current?.unloadAsync();
       }).catch(() => {});
     };
-  }, [navigation]);
+  }, [navigation, soundOn, vibrationOn]);
 
   useEffect(() => {
-    // Start filling animation (visual only, not tied to actual timing)
+    // Start filling animation (matches 10 second timer)
     Animated.timing(fillAnimation, {
       toValue: 1,
-      duration: 15000,
-      easing: Easing.out(Easing.quad),
+      duration: 10000, // Match the navigation timer
+      easing: Easing.linear, // Linear to match TreatmentScreen
       useNativeDriver: false,
     }).start();
+
 
     // Create wave animation for heating effect
     const waveAnimationLoop = () => {
@@ -373,7 +394,6 @@ export const HeatingScreen: React.FC = () => {
         {/* Title Below Circle - Direct on background */}
         <View style={styles.titleContainer}>
           <Text style={styles.title}>{t('heating.heating')}</Text>
-          <Text style={styles.subtitle}>{t('heating.doNotApplyYet')}</Text>
         </View>
     </View>
   );

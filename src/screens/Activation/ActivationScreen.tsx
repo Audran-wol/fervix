@@ -35,7 +35,6 @@ export const ActivationScreen: React.FC = () => {
 
     setScanned(true);
     setIsLoading(true);
-    console.log('QR Code scanned:', data);
 
     try {
       // Extract serial code from QR data
@@ -48,8 +47,6 @@ export const ActivationScreen: React.FC = () => {
       } catch {
         // Not JSON, use raw data
       }
-
-      console.log('Extracted serial code:', serialCode);
 
       // Validate format before calling API
       const serialCodeRegex = /^FV\d{8}$/;
@@ -77,10 +74,7 @@ export const ActivationScreen: React.FC = () => {
         Alert.alert(
           `✅ ${t('activation.activationSuccessful')}`,
           `${result.message}\n\n` +
-          `Serial Code: ${result.data?.serialCode}\n` +
-          `Batch: ${result.data?.batchName}\n` +
-          `Scans Used: ${result.data?.scanCount}/${result.data?.maxScans}\n` +
-          `Remaining Activations: ${result.data?.remainingScans}`,
+          `Scans: ${result.data?.scanCount}/${result.data?.maxScans}`,
           [
             {
               text: t('activation.continue'),
@@ -108,7 +102,6 @@ export const ActivationScreen: React.FC = () => {
         );
       }
     } catch (error) {
-      console.error('Error processing QR code:', error);
       Alert.alert(
         t('common.error'),
         t('activation.unexpectedError'),
@@ -147,7 +140,7 @@ export const ActivationScreen: React.FC = () => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? colors.surface : '#F7F6FA',
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
     },
     content: {
       flex: 1,
@@ -160,44 +153,50 @@ export const ActivationScreen: React.FC = () => {
       backgroundColor: '#000',
     },
     logoContainer: {
-      marginBottom: 40,
+      marginBottom: 60,
       alignItems: 'center',
     },
     logo: {
-      width: 300,
-      height: 90,
+      width: 280,
+      height: 85,
       resizeMode: 'contain',
     },
     title: {
-      fontSize: 28,
-      fontWeight: 'bold',
+      fontSize: 24,
+      fontWeight: '600',
       color: colors.textPrimary,
       textAlign: 'center',
-      marginBottom: 16,
+      marginBottom: 12,
     },
     subtitle: {
-      fontSize: 18,
+      fontSize: 16,
       color: colors.textMuted,
       textAlign: 'center',
-      lineHeight: 24,
-      marginBottom: 40,
+      lineHeight: 22,
+      marginBottom: 50,
+      maxWidth: 280,
     },
     scanButton: {
       backgroundColor: colors.primary,
-      paddingVertical: 16,
-      paddingHorizontal: 32,
-      borderRadius: 12,
+      paddingVertical: 18,
+      paddingHorizontal: 40,
+      borderRadius: 16,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 16,
-      minWidth: 200,
+      marginBottom: 20,
+      minWidth: 220,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
     },
     scanButtonText: {
       color: '#FFFFFF',
       fontSize: 18,
       fontWeight: '600',
-      marginLeft: 8,
+      marginLeft: 10,
     },
     loadingOverlay: {
       position: 'absolute',
@@ -221,59 +220,61 @@ export const ActivationScreen: React.FC = () => {
       alignItems: 'center',
     },
     scanArea: {
-      width: width * 0.7,
-      height: width * 0.7,
-      borderWidth: 3,
-      borderColor: colors.primary,
-      borderRadius: 20,
+      width: width * 0.75,
+      height: width * 0.75,
+      borderWidth: 2,
+      borderColor: '#FFFFFF',
+      borderRadius: 24,
       backgroundColor: 'transparent',
     },
     corner: {
       position: 'absolute',
-      width: 30,
-      height: 30,
-      borderColor: colors.primary,
+      width: 24,
+      height: 24,
+      borderColor: '#FFFFFF',
     },
     topLeft: {
-      top: -3,
-      left: -3,
-      borderTopWidth: 6,
-      borderLeftWidth: 6,
-      borderTopLeftRadius: 8,
+      top: -2,
+      left: -2,
+      borderTopWidth: 4,
+      borderLeftWidth: 4,
+      borderTopLeftRadius: 12,
     },
     topRight: {
-      top: -3,
-      right: -3,
-      borderTopWidth: 6,
-      borderRightWidth: 6,
-      borderTopRightRadius: 8,
+      top: -2,
+      right: -2,
+      borderTopWidth: 4,
+      borderRightWidth: 4,
+      borderTopRightRadius: 12,
     },
     bottomLeft: {
-      bottom: -3,
-      left: -3,
-      borderBottomWidth: 6,
-      borderLeftWidth: 6,
-      borderBottomLeftRadius: 8,
+      bottom: -2,
+      left: -2,
+      borderBottomWidth: 4,
+      borderLeftWidth: 4,
+      borderBottomLeftRadius: 12,
     },
     bottomRight: {
-      bottom: -3,
-      right: -3,
-      borderBottomWidth: 6,
-      borderRightWidth: 6,
-      borderBottomRightRadius: 8,
+      bottom: -2,
+      right: -2,
+      borderBottomWidth: 4,
+      borderRightWidth: 4,
+      borderBottomRightRadius: 12,
     },
     scannerHeader: {
       position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
-      padding: 24,
-      backgroundColor: 'rgba(0,0,0,0.7)',
+      paddingTop: 60,
+      paddingHorizontal: 24,
+      paddingBottom: 24,
+      backgroundColor: 'rgba(0,0,0,0.8)',
     },
     scannerTitle: {
-      color: '#fff',
-      fontSize: 20,
-      fontWeight: 'bold',
+      color: '#FFFFFF',
+      fontSize: 22,
+      fontWeight: '600',
       textAlign: 'center',
     },
     scannerFooter: {
@@ -281,28 +282,33 @@ export const ActivationScreen: React.FC = () => {
       bottom: 0,
       left: 0,
       right: 0,
-      padding: 24,
-      backgroundColor: 'rgba(0,0,0,0.7)',
+      paddingTop: 24,
+      paddingHorizontal: 24,
+      paddingBottom: 40,
+      backgroundColor: 'rgba(0,0,0,0.8)',
     },
     scannerInstruction: {
-      color: '#fff',
+      color: '#FFFFFF',
       fontSize: 16,
       textAlign: 'center',
-      marginBottom: 16,
+      marginBottom: 20,
+      opacity: 0.9,
     },
     backButton: {
-      backgroundColor: colors.primary,
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 8,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      paddingVertical: 14,
+      paddingHorizontal: 28,
+      borderRadius: 12,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.3)',
     },
     backButtonText: {
       color: '#FFFFFF',
       fontSize: 16,
-      fontWeight: '600',
+      fontWeight: '500',
       marginLeft: 8,
     },
   });

@@ -22,6 +22,7 @@ import { useSessionStore } from '../../state/useSessionStore';
 import { useSettingsStore } from '../../state/useSettingsStore';
 import { PowerController } from '../../state/power';
 import type { SampleEvent } from '../../state/power';
+import * as Haptics from 'expo-haptics';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -30,10 +31,11 @@ export const HomeScreen: React.FC = () => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const { profile, setProfile } = useSessionStore();
-  const { sensitive, setSensitive } = useSettingsStore();
+  const { sensitive, setSensitive, soundOn, vibrationOn } = useSettingsStore();
   const [showDeviceImage, setShowDeviceImage] = useState(false);
   const [deviceConnected, setDeviceConnected] = useState(false);
   const [deviceDetectionThreshold, setDeviceDetectionThreshold] = useState<number>(0.20);
+  const [coolingCountdown, setCoolingCountdown] = useState<number | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
@@ -67,6 +69,45 @@ export const HomeScreen: React.FC = () => {
     PowerController.setDeviceDetectionThreshold(TEST_THRESHOLD);
     console.log(`[HomeScreen] Applied test threshold: ${TEST_THRESHOLD}`);
   }, []);
+
+  // ✅ Start cooling countdown only when coming from treatment completion
+  useEffect(() => {
+    // Check if we have route params indicating we're coming from treatment completion
+    const route = navigation.getState()?.routes?.find(r => r.name === 'MainTabs');
+    const params = route?.params as any;
+    
+    if (params?.fromTreatmentCompletion) {
+      setCoolingCountdown(12);
+      console.log('[HomeScreen] 🧊 Starting cooling countdown: 12 seconds');
+      
+      // Clear the parameter to prevent restarting on subsequent focuses
+      navigation.setParams({ fromTreatmentCompletion: undefined });
+    }
+  }, [isFocused, navigation]);
+
+  // ✅ Alternative: Use a global flag approach
+  useEffect(() => {
+    // Check if we're coming from treatment completion using a global flag
+    if ((window as any).shouldStartCooling) {
+      setCoolingCountdown(12);
+      console.log('[HomeScreen] 🧊 Starting cooling countdown: 12 seconds');
+      (window as any).shouldStartCooling = false; // Clear the flag
+    }
+  }, [isFocused]);
+
+  // ✅ Cooling countdown timer
+  useEffect(() => {
+    if (coolingCountdown !== null && coolingCountdown > 0) {
+      const timer = setTimeout(() => {
+        setCoolingCountdown(prev => prev !== null ? prev - 1 : null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (coolingCountdown === 0) {
+      // Countdown finished
+      setCoolingCountdown(null);
+      console.log('[HomeScreen] ✅ Cooling countdown finished');
+    }
+  }, [coolingCountdown]);
 
   // Method to update threshold from external source (like DevPowerScreen)
   const updateThreshold = (newThreshold: number) => {
@@ -106,7 +147,7 @@ export const HomeScreen: React.FC = () => {
     container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
     scroll: { flex: 1 },
     // remove global gap here – it was adding extra space between logo and cards
-    content: { paddingHorizontal: 16, paddingBottom: 24 },
+    content: { paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom + 80, 24) }, // Account for nav bar + safe area
 
     /* AppBar / Logo */
     appBar: {
@@ -150,38 +191,45 @@ export const HomeScreen: React.FC = () => {
       height: 80,
     },
 
-    /* Insert Device Card */
-    insertDeviceCard: {
-      backgroundColor: '#D1D5DB',
-      borderRadius: 32,
-      borderWidth: 0,
+    /* Insert Device Banner */
+    insertDeviceBanner: {
+      backgroundColor: isDark ? '#E5E7EB' : '#F3F4F6',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: isDark ? '#D1D5DB' : '#E5E7EB',
       paddingHorizontal: 20,
-      paddingVertical: 16,
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 5,
+      paddingVertical: 20,
       minHeight: 70,
       marginTop: 12,
       marginBottom: 12,
       justifyContent: 'center',
       alignItems: 'center',
     },
+    insertDeviceBannerConnected: {
+      backgroundColor: '#D1FAE5', // Light green background
+      borderColor: '#A7F3D0', // Light green border
+    },
     insertDeviceText: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: '#6B7280',
+      fontSize: 16,
+      fontWeight: '700',
+      color: isDark ? '#374151' : '#6B7280',
       textAlign: 'center',
-      lineHeight: 24,
+      lineHeight: 22,
+    },
+    insertDeviceTextGently: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: isDark ? '#374151' : '#6B7280',
+      textAlign: 'center',
+      lineHeight: 26,
     },
     instructionText: {
-      ...typography.textStyles.body,
-      color: colors.textPrimary,
-      textAlign: 'center',
       fontSize: 16,
-      lineHeight: 22,
-      fontWeight: '500',
+      fontWeight: '600',
+      color: isDark ? '#4B5563' : '#6B7280',
+      textAlign: 'center',
+      lineHeight: 20,
+      marginTop: 8,
     },
 
     /* Illustration area */
@@ -268,11 +316,19 @@ export const HomeScreen: React.FC = () => {
 
   const playDetectedSound = async () => {
     try {
-      const s = soundRef.current;
-      if (!s) return;
-      await s.replayAsync(); // ensures play from start
+      if (soundOn) {
+        const s = soundRef.current;
+        if (!s) return;
+        await s.replayAsync(); // ensures play from start
+        console.log('[HomeScreen] 🔊 Playing detection sound');
+      }
+      
+      if (vibrationOn) {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        console.log('[HomeScreen] 📳 Playing detection vibration');
+      }
     } catch (e) {
-      console.log('[HomeScreen] Sound play error', e);
+      console.log('[HomeScreen] Sound/vibration error', e);
     }
   };
 
@@ -301,8 +357,15 @@ export const HomeScreen: React.FC = () => {
       useEffect(() => {
         if (!isFocused) return; // only run when Home is visible
 
-        console.log('[HomeScreen] 👀 Focus detected - subscribing to power events');
-        console.log('[HomeScreen] Current phase:', useSessionStore.getState().backendPhase);
+        console.log('[HomeScreen] 👀 Focus detected - starting session + subscribing to power events');
+        
+        // ✅ CRITICAL: Ensure PowerController is bound first
+        const store = useSessionStore.getState();
+        store.bindPowerController(PowerController);
+        
+        // Start the power monitoring session
+        store.requestStart({ presetId: profile });
+        console.log('[HomeScreen] ✅ Power monitoring session started');
 
         const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
           if (event.is_charging) {
@@ -356,34 +419,28 @@ export const HomeScreen: React.FC = () => {
 
           console.log(`[HomeScreen] cur=${cur?.toFixed(3)} base=${base?.toFixed(3)} |Δ|=${deltaMag.toFixed(3)} thr=${thr} inAttach=${inAttachWindow} debounced=${debouncedDetected}`);
 
-          // ✅ SIMPLE: Show UI, play sound, and navigate after 3 seconds
+          // ✅ SIMPLE: Show UI, play sound, and navigate
           if (debouncedDetected && !connectedRef.current) {
             connectedRef.current = true;
             setDeviceConnected(true);
-            setShowDeviceImage(true);
+            setShowDeviceImage(false); // Start with false to show "Device Connected" first
 
             // Play detection sound
             playDetectedSound();
 
-            // Smooth auto-scroll
-            setTimeout(() => {
-              scrollViewRef.current?.scrollTo({ y: 200, animated: true });
-            }, 100);
-
-            Animated.timing(deviceImagePulse, {
-              toValue: 1,
-              duration: 500,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }).start();
-
-            console.log('[HomeScreen] 🔥 Device detected! Navigating to Heating in 3 seconds...');
+            console.log('[HomeScreen] 🔥 Device detected! Showing "Device Connected" for 2 seconds...');
             
-            // Navigate after 3 seconds
+            // After 2 seconds, show the "Gently press" instruction
+            setTimeout(() => {
+              setShowDeviceImage(true);
+              console.log('[HomeScreen] 📱 Now showing "Gently press Fervix against the skin to start."');
+            }, 2000); // 2 seconds for "Device Connected"
+            
+            // Navigate after 6 seconds total (2s for "Device Connected" + 4s for "Gently press")
             setTimeout(() => {
               console.log('[HomeScreen] ✅ Navigating to Heating screen');
               navigation.navigate('Heating' as never);
-            }, 3000);
+            }, 6000);
           }
 
           // If it dips below threshold before debounce or after, clean up
@@ -470,7 +527,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.grid}>
           <ProfileCard
             label={t('start.child')}
-            iconSource={require('../../assets/images/icons/other child.png')}
+            iconSource={require('../../assets/images/webimg/other child.webp')}
             selected={profile === 'child'}
             onPress={() => setProfile('child')}
             style={styles.gridItem}
@@ -478,7 +535,7 @@ export const HomeScreen: React.FC = () => {
           />
           <ProfileCard
             label={t('start.adult')}
-            iconSource={require('../../assets/images/icons/ic_adult.png')}
+            iconSource={require('../../assets/images/webimg/ic_adult.webp')}
             selected={profile === 'adult'}
             onPress={() => setProfile('adult')}
             style={styles.gridItem}
@@ -490,7 +547,7 @@ export const HomeScreen: React.FC = () => {
           <SettingToggleRow
             leftIcon={
               <Image
-                source={require('../../assets/images/icons/new_sensitive.png')}
+                source={require('../../assets/images/webimg/new_sensitive.webp')}
                 style={[
                   styles.sensIcon,
                   { tintColor: sensitive ? colors.primary : '#9CA3AF' },
@@ -505,18 +562,27 @@ export const HomeScreen: React.FC = () => {
         </View>
 
 
-        {/* Insert Device Instruction - Automatic Detection Only */}
-        <View style={styles.insertDeviceCard}>
-            <Text style={styles.insertDeviceText}>
-              {deviceConnected ? 'Device Connected' : t('start.insertDevice')}
+        {/* Insert Device Banner - Informational Only */}
+        <View style={[
+          styles.insertDeviceBanner,
+          deviceConnected && !showDeviceImage && styles.insertDeviceBannerConnected
+        ]}>
+            <Text style={[
+              styles.insertDeviceText,
+              deviceConnected && showDeviceImage && styles.insertDeviceTextGently
+            ]}>
+              {coolingCountdown !== null ? `${t('start.coolingDown')} ${coolingCountdown}s` :
+               deviceConnected && !showDeviceImage ? 'Device Connected' : 
+               deviceConnected && showDeviceImage ? t('start.gentlyPress') : 
+               t('start.insertDevice')}
             </Text>
         </View>
 
-        {/* Device Image Display */}
-        {showDeviceImage && (
+        {/* Device Image Display - Temporarily commented out */}
+        {/* {showDeviceImage && (
           <View style={styles.deviceImageContainer}>
             <Animated.Image
-              source={require('../../assets/images/icons/phone_wrist.png')}
+              source={require('../../assets/images/webimg/phone_wrist.webp')}
               style={[
                 styles.deviceImage,
                 {
@@ -543,7 +609,7 @@ export const HomeScreen: React.FC = () => {
               resizeMode="contain"
             />
           </View>
-        )}
+        )} */}
 
         <View style={{ height: 80 }} />
       </ScrollView>

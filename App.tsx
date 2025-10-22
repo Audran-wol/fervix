@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar, View, ActivityIndicator } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { PowerController } from './src/state/power';
 import { useSessionStore } from './src/state';
@@ -66,9 +67,9 @@ export default function App() {
   
   // If activated, show main app
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar barStyle="dark-content" backgroundColor="#F7F6FA" />
       <RootNavigator />
-    </>
+    </SafeAreaProvider>
   );
 }

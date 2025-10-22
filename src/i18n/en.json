@@ -64,6 +64,8 @@
     "instruction": "To start, place the device on the affected area",
     "insertDevice": "Insert Fervix Device",
     "deviceConnected": "Device Connected",
+    "gentlyPress": "Gently press Fervix against the skin to start.",
+    "coolingDown": "Cooling down…",
     "treatmentSettings": "Treatment Settings",
     "temperatureLabel": "Temperature",
     "durationLabel": "Duration (minutes)",
@@ -74,42 +76,60 @@
   },
   "info": {
     "title": "Info",
-    "about": "About FERVIX",
-    "aboutDescription": "FERVIX is a medical device application designed to provide safe and effective treatment.",
-    "howItWorks": "How it Works",
-    "howItWorksDescription": "The device uses advanced technology to deliver precise treatment according to medical protocols.",
-    "safetyInfo": "Safety Information",
-    "safetyInfoDescription": "Please read all safety instructions before use. Consult your healthcare provider if you have any questions.",
-    "steps": {
-      "heating": "Heating",
-      "heatingDescription": "Warm up the device",
-      "application": "Application", 
-      "applicationDescription": "The target area",
-      "cooling": "Cooling",
-      "coolingDescription": "A few minutes"
+    "tabs": {
+      "quickStart": "Quick Start",
+      "userManual": "User Manual", 
+      "importantInfo": "Important Info",
+      "appVersions": "App Versions"
     },
-    "tips": {
-      "title": "Tips for optimal usage",
-      "tip1": "Ensure skin is clean and dry",
-      "tip2": "Use thin, even layer",
-      "tip3": "Avoid contact with eyes"
+    "quickStart": {
+      "title": "Quick Start Guide",
+      "description": "Get started with FERVIX in just a few simple steps. Our advanced medical device technology ensures safe and effective treatment.",
+      "feature1": {
+        "title": "Smart Detection",
+        "description": "Automatic device detection and calibration for optimal performance"
+      },
+      "feature2": {
+        "title": "Safety First",
+        "description": "Built-in safety protocols and real-time monitoring"
+      },
+      "feature3": {
+        "title": "Precise Timing",
+        "description": "Accurate treatment duration control for consistent results"
+      },
+      "feature4": {
+        "title": "Temperature Control",
+        "description": "Advanced thermal management for safe operation"
+      }
     },
-    "social": {
-      "instagram": "Instagram",
-      "youtube": "Tutorial",
-      "support": "Support"
+    "manual": {
+      "title": "User Manual",
+      "description": "Complete instructions for using your FERVIX device safely and effectively.",
+      "step1": "Connect your device to the USB-C port and wait for detection",
+      "step2": "Select your treatment profile based on your needs and skin type",
+      "step3": "Follow the on-screen instructions for proper device positioning",
+      "step4": "Complete the treatment cycle and allow proper cooling time"
     },
-    "faq": {
-      "title": "FAQ",
-      "subtitle": "Frequently Asked Questions",
-      "question1": "How long does a treatment take?",
-      "answer1": "A typical treatment session takes 10-15 minutes depending on the selected profile.",
-      "question2": "Is the device safe for children?",
-      "answer2": "Yes, the device has a special child profile with reduced intensity for safe use.",
-      "question3": "Can I use it on sensitive skin?",
-      "answer3": "Yes, enable the sensitive skin mode for gentler treatment settings.",
-      "question4": "How often can I use the device?",
-      "answer4": "Follow your healthcare provider's recommendations, typically once per day maximum."
+    "important": {
+      "title": "Important Information",
+      "description": "Essential safety information and usage guidelines for optimal results.",
+      "warning1": "Always consult with your healthcare provider before starting treatment",
+      "warning2": "Do not use on broken, irritated, or infected skin",
+      "warning3": "Discontinue use immediately if you experience any adverse reactions"
+    },
+    "versions": {
+      "title": "App Versions",
+      "description": "Current and previous versions of the FERVIX application.",
+      "current": {
+        "title": "Current Version",
+        "version": "Version 1.2.0",
+        "releaseDate": "Released: December 2024"
+      },
+      "previous": {
+        "title": "Previous Version", 
+        "version": "Version 1.1.5",
+        "releaseDate": "Released: November 2024"
+      }
     }
   },
   "support": {

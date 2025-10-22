@@ -32,14 +32,7 @@ export const CoolingScreen: React.FC = () => {
   const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
   const textColorAnimation = useRef(new Animated.Value(0)).current;
 
-  // Navigate based on backend phase changes
-  useEffect(() => {
-    console.log('[CoolingScreen] Backend phase changed to:', backendPhase);
-    if (backendPhase === 'DONE') {
-      console.log('[CoolingScreen] Navigating to FinalCompleted screen');
-      navigation.navigate('FinalCompleted' as never);
-    }
-  }, [backendPhase, navigation]);
+  // ✅ Already has timer-based navigation below - keeping it simple
 
   // === Sizing (same as treatment screen) =====================================================
   const CARD = Math.min(W, H) * 0.70;
@@ -234,7 +227,7 @@ export const CoolingScreen: React.FC = () => {
           {/* Hand is clipped by mask */}
           <View style={s.circleMask}>
             <Image
-              source={require('../../assets/images/icons/hand_cool1.png')}
+              source={require('../../assets/images/webimg/hand_cool1.webp')}
               style={s.hand}
               onLayout={(e) => setHandLayout(e.nativeEvent.layout)}
             />

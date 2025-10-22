@@ -15,9 +15,9 @@ export const CompletedScreen: React.FC = () => {
     // Start the success animation
     animationRef.current?.play();
     
-    // Navigate to cooling screen after 3 seconds
+    // Navigate to FinalCompleted after 3 seconds (skip cooling screen)
     const timer = setTimeout(() => {
-      navigation.navigate('Cooling' as never);
+      navigation.navigate('FinalCompleted' as never);
     }, 3000);
 
     return () => clearTimeout(timer);

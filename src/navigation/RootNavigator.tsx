@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../theme/useTheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Import screens
 import HomeScreen from '../screens/Home/HomeScreen';
@@ -46,6 +47,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const MainTabNavigator = () => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
         <Tab.Navigator
@@ -54,13 +56,20 @@ const MainTabNavigator = () => {
             tabBarStyle: {
               backgroundColor: isDark ? colors.card : '#F5F5F5',
               borderTopWidth: 0,
-              height: 64,
-              paddingBottom: 4,
+              height: 64 + insets.bottom, // Add safe area bottom padding
+              paddingBottom: Math.max(insets.bottom, 4), // Ensure minimum 4px or safe area
               paddingTop: 0,
               borderTopLeftRadius: 0,
               borderTopRightRadius: 0,
-              elevation: 0,
-              shadowOpacity: 0,
+              elevation: 8, // Add elevation to ensure it's above system UI
+              shadowOpacity: 0.1,
+              shadowOffset: { width: 0, height: -2 },
+              shadowRadius: 4,
+              position: 'absolute', // Ensure it's positioned above everything
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 1000, // High z-index to ensure it's on top
             },
             tabBarActiveTintColor: colors.primary,
             tabBarInactiveTintColor: isDark ? '#9CA3AF' : '#9CA3AF',

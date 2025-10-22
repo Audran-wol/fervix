@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Animated, Easing,
-  TouchableOpacity, Dimensions, Image, Platform, LayoutRectangle,
+  TouchableOpacity, Dimensions, Platform, LayoutRectangle,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
 import { useSessionStore } from '../../state';
+import { useSettingsStore } from '../../state/useSettingsStore';
+import * as Haptics from 'expo-haptics';
 
 const { width: W, height: H } = Dimensions.get('window');
 const DURATION_MS = 20_000;
@@ -20,69 +23,73 @@ export const TreatmentScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const backendPhase = useSessionStore(state => state.backendPhase);
   const remainingMs = useSessionStore(state => state.remainingMs);
+  const { soundOn, vibrationOn } = useSettingsStore();
 
-  const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000));
+  const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000)); // Start from 20 seconds
   const screenFill = useRef(new Animated.Value(0)).current;
   const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
   const textColorAnimation = useRef(new Animated.Value(0)).current;
   const soundRef = useRef<Audio.Sound | null>(null);
+  const lottieRef = useRef<LottieView>(null);
 
-  // === Sizing (unchanged) =====================================================
+  // === Sizing for treatment icon =============================================
   const CARD = Math.min(W, H) * 0.70;
-
-  // Phone (UNCHANGED math)
-  const PHONE_W = CARD * 0.38;
-  const PHONE_H = PHONE_W * 1.90;
-  const PHONE_TILT_DEG = 0.8;
-  const PHONE_CENTER_SHIFT_X = CARD * 0.01;
-
-  const PLUG_REL_Y = 0.42;
-  const PLUG_OFFSET_Y = 7;
-  const CONNECTOR_ADJUST_Y = 10;
-  const MAX_PEEK_OUT_TOP = -CARD * 0.30;
-
-   // Hand (only thing we reposition)
-   const HAND_SCALE = 0.92;
-   const HAND_LEFT  = CARD * 0.05;  // arm enters from LEFT, hidden by mask
-   const HAND_TOP   = CARD * 0.05;   // hand sits higher in the circle
+  const ICON_SIZE = CARD * 0.85; // Treatment icon size - INCREASED
   // ===========================================================================
 
-  // ✅ SIMPLE SOLUTION: Play sound + navigate after 20 seconds
+  // ✅ SIMPLE SOLUTION: Play sound/vibration + navigate after 20 seconds
   useEffect(() => {
     console.log('[TreatmentScreen] 💚 Starting treatment phase...');
     
-    // Play sound
-    (async () => {
-      try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-        });
-        const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/sound/treatment_loop_25s.wav'),
-          { shouldPlay: true, isLooping: true, volume: 1.0 }
-        );
-        soundRef.current = sound;
-        console.log('[TreatmentScreen] 🔊 Playing treatment sound loop');
-      } catch (e) {
-        console.log('[TreatmentScreen] ❌ Sound error:', e);
-      }
-    })();
+    // Play sound if enabled
+    if (soundOn) {
+      (async () => {
+        try {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: true,
+          });
+          const { sound } = await Audio.Sound.createAsync(
+            require('../../assets/sound/treatment_loop_25s.wav'),
+            { shouldPlay: true, isLooping: true, volume: 1.0 }
+          );
+          soundRef.current = sound;
+          console.log('[TreatmentScreen] 🔊 Playing treatment sound loop');
+        } catch (e) {
+          console.log('[TreatmentScreen] ❌ Sound error:', e);
+        }
+      })();
+    }
     
-    // Navigate after 20 seconds
+    // Start vibration pattern if enabled
+    let vibrationInterval: NodeJS.Timeout | null = null;
+    if (vibrationOn) {
+      vibrationInterval = setInterval(async () => {
+        try {
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } catch (e) {
+          console.log('[TreatmentScreen] ❌ Vibration error:', e);
+        }
+      }, 1500); // Vibrate every 1.5 seconds
+      console.log('[TreatmentScreen] 📳 Starting treatment vibration pattern');
+    }
+    
+    // Navigate after 20 seconds - skip cooling screen
     const timer = setTimeout(() => {
-      console.log('[TreatmentScreen] ✅ 20 seconds passed - navigating to Cooling');
+      console.log('[TreatmentScreen] ✅ 20 seconds passed - navigating to FinalCompleted (skipping cooling)');
       soundRef.current?.stopAsync().catch(() => {});
-      navigation.navigate('Cooling' as never);
+      if (vibrationInterval) clearInterval(vibrationInterval);
+      navigation.navigate('FinalCompleted' as never);
     }, 20000); // 20 seconds
     
     return () => {
       clearTimeout(timer);
+      if (vibrationInterval) clearInterval(vibrationInterval);
       soundRef.current?.stopAsync().then(() => {
         soundRef.current?.unloadAsync();
       }).catch(() => {});
     };
-  }, [navigation]);
+  }, [navigation, soundOn, vibrationOn]);
 
   // Update countdown from store's remainingMs
   useEffect(() => {
@@ -109,23 +116,33 @@ export const TreatmentScreen: React.FC = () => {
       }).start();
     }, 6000);
 
-    return () => {};
+    // Countdown timer - exact same logic as CoolingScreen
+    const startedAt = Date.now();
+    let tick: NodeJS.Timeout | null = null;
+
+    tick = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const left = Math.max(0, Math.ceil((DURATION_MS - elapsed) / 1000));
+      setCountdown(left);
+      if (left <= 0) {
+        if (tick) {
+          clearInterval(tick);
+          tick = null;
+        }
+      }
+    }, 200); // Update every 200ms for smooth countdown
+
+    return () => {
+      if (tick) {
+        clearInterval(tick);
+      }
+    };
   }, []);
 
   const screenFillHeight = screenFill.interpolate({
     inputRange: [0, 1],
     outputRange: [0, H],
   });
-
-  // Phone position (keep same math)
-  const PHONE_LEFT = (CARD - PHONE_W) / 2 + PHONE_CENTER_SHIFT_X;
-  let PHONE_TOP = (CARD - PHONE_H) / 2;
-  if (handLayout) {
-    const plugY = handLayout.y + handLayout.height * PLUG_REL_Y + PLUG_OFFSET_Y;
-    let top = plugY - PHONE_H + CONNECTOR_ADJUST_Y;
-    if (top < MAX_PEEK_OUT_TOP) top = MAX_PEEK_OUT_TOP;
-    PHONE_TOP = top;
-  }
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
@@ -145,7 +162,7 @@ export const TreatmentScreen: React.FC = () => {
 
     cardWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
 
-    // Outer circle container (no clipping, so phone can peek above)
+    // Outer circle container
     cardOuter: {
       width: CARD, height: CARD, borderRadius: CARD / 2,
       backgroundColor: '#FFFFFF',
@@ -155,59 +172,47 @@ export const TreatmentScreen: React.FC = () => {
       shadowRadius: 36, elevation: 16,
     },
 
-    // Inner mask (same size/shape) — ONLY the hand goes inside here
-    circleMask: {
-      position: 'absolute', left: 0, top: 0, width: CARD, height: CARD,
-      borderRadius: CARD / 2, overflow: 'hidden',
-      alignItems: 'center', justifyContent: 'center',
-    },
-
-    hand: {
-      position: 'absolute',
-      width: CARD * HAND_SCALE,
-      height: CARD * HAND_SCALE,
-      left: HAND_LEFT,
-      top: HAND_TOP,
-      resizeMode: 'contain',
-      zIndex: 1,
-    },
-
-    // Phone sits ABOVE the mask, so it can overlay at the top like before
-    phone: {
-      position: 'absolute',
-      left: PHONE_LEFT,
-      top: PHONE_TOP,
-      width: PHONE_W,
-      height: PHONE_H,
+    // Treatment icon container
+    treatmentIconContainer: {
+      width: ICON_SIZE,
+      height: ICON_SIZE,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.card,
-      borderWidth: 3,
-      borderColor: '#0F172A',
-      borderRadius: 22,
-      shadowColor: '#000',
-      shadowOpacity: 0.18,
-      shadowOffset: { width: 0, height: 5 },
-      shadowRadius: 8,
-      elevation: 5,
-      transform: [{ rotate: `${PHONE_TILT_DEG}deg` }],
       zIndex: 2,
     },
 
-    phoneNotch: {
+    treatmentIcon: {
+      width: ICON_SIZE,
+      height: ICON_SIZE,
+      resizeMode: 'contain',
+    },
+
+    // Countdown Between Circle and Title Styles
+    countdownContainer: {
       position: 'absolute',
-      top: 6, width: '36%', height: 10,
-      borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
-      backgroundColor: colors.textPrimary,
+      bottom: 200, // Position between circle and title, outside the circle
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 10,
+    },
+    countdownNumber: {
+      fontSize: 32,
+      fontWeight: '700',
+      textAlign: 'center',
+      letterSpacing: -0.5,
     },
 
     countdown: {
+      position: 'absolute',
+      bottom: 20,
       fontSize: 50, fontWeight: '300', color: colors.textPrimary,
       includeFontPadding: false, textAlignVertical: 'center', letterSpacing: -2,
       fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-thin' }),
+      zIndex: 3,
     },
 
-    titleWrap: { position: 'absolute', bottom: 220, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
+    titleWrap: { position: 'absolute', bottom: 160, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
     title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
   });
 
@@ -218,23 +223,37 @@ export const TreatmentScreen: React.FC = () => {
 
       <View style={s.cardWrap}>
         <View style={s.cardOuter}>
-          {/* Hand is clipped by mask */}
-          <View style={s.circleMask}>
-            <Image
-              source={require('../../assets/images/icons/hand_final.png')}
-              style={s.hand}
-              onLayout={(e) => setHandLayout(e.nativeEvent.layout)}
+          {/* Treatment Lottie animation */}
+          <View style={s.treatmentIconContainer}>
+            <LottieView
+              ref={lottieRef}
+              source={require('../../assets/lotties/treament.json')}
+              style={s.treatmentIcon}
+              autoPlay={true}
+              loop={true}
+              speed={1.0}
+              resizeMode="contain"
             />
           </View>
-
-          {/* Phone overlays above circle like before */}
-          <View style={s.phone}>
-            <View style={s.phoneNotch} />
-            <Text numberOfLines={1} adjustsFontSizeToFit style={s.countdown}>
-              {countdown}
-            </Text>
-          </View>
         </View>
+        
+      </View>
+      
+      {/* Countdown Number Between Circle and Title */}
+      <View style={s.countdownContainer}>
+        <Animated.Text 
+          style={[
+            s.countdownNumber,
+            {
+              color: textColorAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [colors.textPrimary, '#FFFFFF'],
+              }),
+            },
+          ]}
+        >
+          {countdown}
+        </Animated.Text>
       </View>
 
       <View style={s.titleWrap}>

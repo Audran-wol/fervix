@@ -1,246 +1,177 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Animated, Easing, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Platform, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { LinearGradient } from 'expo-linear-gradient';
-import LottieView from 'lottie-react-native';
-import { FvButton, FvCard } from '../../components';
+import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
-import { useSessionStore } from '../../state';
+import { useSettingsStore } from '../../state/useSettingsStore';
+import * as Haptics from 'expo-haptics';
 
 export const AbortedScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
-  const { profile, requestStart } = useSessionStore();
+  const { soundOn, vibrationOn } = useSettingsStore();
+  const soundRef = useRef<Audio.Sound | null>(null);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-
+  // Play error sound/vibration
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    (async () => {
+      try {
+        // Play sound if enabled
+        if (soundOn) {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: true,
+            staysActiveInBackground: false,
+            playThroughEarpieceAndroid: false,
+          });
+          const { sound } = await Audio.Sound.createAsync(
+            require('../../assets/sound/done_chime_1s.wav'),
+            { shouldPlay: true, isLooping: false, volume: 1.0 }
+          );
+          soundRef.current = sound;
+          console.log('[AbortedScreen] 🔔 Playing error chime');
+        }
+        
+        // Play vibration if enabled
+        if (vibrationOn) {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          console.log('[AbortedScreen] 📳 Playing error vibration');
+        }
+      } catch (e) {
+        console.log('[AbortedScreen] Sound/vibration init error:', e);
+      }
+    })();
+    
+    return () => {
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
+  }, [soundOn, vibrationOn]);
 
-  const styles = StyleSheet.create({
+  const s = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa',
+      backgroundColor: isDark ? colors.surface : '#FFFFFF',
     },
-    gradient: {
-      flex: 1,
+
+    // Background glows (kept from FinalCompletedScreen)
+    backgroundContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
+    baseWhite: { ...StyleSheet.absoluteFillObject, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
+    glow: { position: 'absolute', borderRadius: 9999 },
+    glowTopRight: { width: 420, height: 420, right: -140, top: -120, backgroundColor: 'rgba(239, 68, 68, 0.10)' },
+    glowCenterWhite: { width: 360, height: 360, left: '50%', top: '28%', marginLeft: -180, backgroundColor: isDark ? colors.surface : '#FFFFFF' },
+    glowBottomRight: { width: 520, height: 420, right: -220, bottom: -160, backgroundColor: 'rgba(239, 68, 68, 0.08)' },
+    glowBottomLeft: { width: 380, height: 380, left: -140, bottom: -100, backgroundColor: 'rgba(239, 68, 68, 0.08)' },
+
+    // Back button
+    backButton: {
+      position: 'absolute',
+      top: 50,
+      left: 20,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+      zIndex: 10,
     },
+
+    // Content
     content: {
       flex: 1,
-      padding: 24,
-      justifyContent: 'center',
       alignItems: 'center',
-    },
-    iconContainer: {
-      width: 140,
-      height: 140,
-      borderRadius: 70,
-      backgroundColor: 'rgba(239, 68, 68, 0.1)',
       justifyContent: 'center',
+      paddingHorizontal: 32,
+      paddingVertical: 60,
+      paddingBottom: 100,
+      zIndex: 10,
+    },
+
+    // Circular card that masks the image (like FinalCompletedScreen)
+    circleCard: {
+      width: 280,
+      height: 280,
+      borderRadius: 140,
+      backgroundColor: '#FFFFFF',
+      overflow: 'hidden', // mask image to a perfect circle
       alignItems: 'center',
-      marginBottom: 32,
-      borderWidth: 3,
-      borderColor: 'rgba(239, 68, 68, 0.3)',
-    },
-    warningIcon: {
-      width: 100,
-      height: 100,
-    },
-    title: {
-      fontSize: 32,
-      fontWeight: 'bold',
-      color: '#ef4444',
-      marginBottom: 12,
-      textAlign: 'center',
-    },
-    subtitle: {
-      fontSize: 18,
-      color: isDark ? '#9ca3af' : '#6b7280',
-      textAlign: 'center',
-      marginBottom: 40,
-      paddingHorizontal: 20,
-      lineHeight: 26,
-    },
-    card: {
-      width: '100%',
-      backgroundColor: isDark ? '#2a2a2a' : '#ffffff',
-      borderRadius: 24,
-      padding: 24,
-      marginBottom: 20,
+      justifyContent: 'center',
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: isDark ? 0.3 : 0.1,
-      shadowRadius: 12,
-      elevation: 6,
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+      shadowOpacity: 0.22,
+      shadowOffset: { width: 0, height: 18 },
+      shadowRadius: 36,
+      elevation: 16,
     },
-    cardTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: isDark ? '#ffffff' : '#1f2937',
-      marginBottom: 12,
+
+    // Image inside the circle
+    cancelledImage: {
+      width: '80%',
+      aspectRatio: 1,
     },
-    cardText: {
-      fontSize: 15,
-      lineHeight: 22,
-      color: isDark ? '#d1d5db' : '#4b5563',
+
+    // Caption (same typography as FinalCompletedScreen)
+    caption: {
+      marginTop: 14,
+      fontSize: 22,
+      fontWeight: Platform.select({ ios: '700' as any, android: '700' as any }) as any,
+      color: isDark ? colors.textPrimary : '#374151',
+      textAlign: 'center',
+      letterSpacing: 0.2,
     },
-    bulletPoint: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      marginBottom: 8,
-    },
-    bullet: {
-      color: '#ef4444',
+
+    // Subtitle
+    subtitle: {
+      marginTop: 8,
       fontSize: 16,
-      marginRight: 8,
-      marginTop: 2,
-    },
-    bulletText: {
-      flex: 1,
-      fontSize: 15,
-      lineHeight: 22,
-      color: isDark ? '#d1d5db' : '#4b5563',
-    },
-    buttonContainer: {
-      width: '100%',
-      gap: 16,
-      marginTop: 20,
-    },
-    retryButton: {
-      backgroundColor: '#ef4444',
-      borderRadius: 16,
-      paddingVertical: 16,
-      alignItems: 'center',
-      shadowColor: '#ef4444',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 6,
-    },
-    retryButtonText: {
-      color: '#ffffff',
-      fontSize: 18,
-      fontWeight: '700',
-    },
-    homeButton: {
-      backgroundColor: 'transparent',
-      borderRadius: 16,
-      paddingVertical: 16,
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: isDark ? '#4b5563' : '#d1d5db',
-    },
-    homeButtonText: {
-      color: isDark ? '#d1d5db' : '#4b5563',
-      fontSize: 16,
-      fontWeight: '600',
+      fontWeight: Platform.select({ ios: '500' as any, android: '500' as any }) as any,
+      color: isDark ? colors.textMuted : '#6B7280',
+      textAlign: 'center',
+      letterSpacing: 0.1,
     },
   });
 
+  useEffect(() => {
+    // Auto-redirect to home screen after 10 seconds
+    const timer = setTimeout(() => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' } as never],
+      });
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [navigation]);
+
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={isDark ? ['#1a1a1a', '#2a2a2a'] : ['#fef2f2', '#ffffff']}
-        style={styles.gradient}
-      >
-        <Animated.View 
-          style={[
-            styles.content,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
-          <View style={styles.iconContainer}>
-            <LottieView
-              source={require('../../assets/lotties/warning_abort.json')}
-              style={styles.warningIcon}
-              autoPlay
-              loop={false}
-            />
-          </View>
+    <View style={s.container}>
+      {/* Content */}
+      <View style={s.content}>
+        <View style={s.circleCard}>
+          <Image
+            source={require('../../assets/images/icons/cancelled.webp')}
+            style={s.cancelledImage}
+            resizeMode="contain"
+          />
+        </View>
 
-          <Text style={styles.title}>{t('aborted.title')}</Text>
-          <Text style={styles.subtitle}>{t('aborted.stoppedDescription')}</Text>
+        <Text style={s.caption}>
+          {t('aborted.title')}
+        </Text>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>📋 {t('aborted.reason')}</Text>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Device disconnected during treatment</Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Power monitoring signal was lost</Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Treatment safety threshold not met</Text>
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>💡 {t('aborted.nextSteps')}</Text>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Ensure device is properly connected</Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Check that phone is not charging</Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Try restarting the treatment</Text>
-            </View>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={() => {
-                requestStart({ presetId: profile });
-                navigation.navigate('Heating' as never);
-              }}
-            >
-              <Text style={styles.retryButtonText}>🔄 Retry Treatment</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.homeButton}
-              onPress={() => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'MainTabs' as never }],
-                });
-              }}
-            >
-              <Text style={styles.homeButtonText}>🏠 Return Home</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </LinearGradient>
-    </SafeAreaView>
+        <Text style={s.subtitle}>
+          Treatment aborted prematurely!
+        </Text>
+      </View>
+    </View>
   );
 };
 

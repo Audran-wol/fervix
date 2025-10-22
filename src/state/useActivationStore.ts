@@ -43,7 +43,7 @@ export const useActivationStore = create<ActivationStore>((set, get) => ({
   serialCode: null,
   deviceId: null,
   activationDate: null,
-  batchName: null,
+  batchName: undefined,
   scanCount: 0,
   maxScans: 5,
   remainingScans: 0,
@@ -71,7 +71,6 @@ export const useActivationStore = create<ActivationStore>((set, get) => ({
       set({ isLoading: false });
       return false;
     } catch (error) {
-      console.error('Error checking activation:', error);
       set({ isLoading: false });
       return false;
     }
@@ -110,12 +109,6 @@ export const useActivationStore = create<ActivationStore>((set, get) => ({
         osVersion: DeviceInfo.getSystemVersion(),
       };
 
-      console.log('Attempting activation with:', {
-        serialCode: scannedCode,
-        deviceId,
-        deviceInfo,
-      });
-
       // Call activation API
       const response = await fetch(`${API_URL}/activate-device`, {
         method: 'POST',
@@ -130,7 +123,6 @@ export const useActivationStore = create<ActivationStore>((set, get) => ({
       });
 
       const result = await response.json();
-      console.log('API Response:', result);
 
       if (result.success) {
         // Save activation data locally
@@ -165,7 +157,6 @@ export const useActivationStore = create<ActivationStore>((set, get) => ({
         };
       }
     } catch (error) {
-      console.error('Activation error:', error);
       set({ isLoading: false });
       
       let errorMessage = 'Network error. Please check your internet connection.';
@@ -193,14 +184,14 @@ export const useActivationStore = create<ActivationStore>((set, get) => ({
         serialCode: null,
         deviceId: null,
         activationDate: null,
-        batchName: null,
+        batchName: undefined,
         scanCount: 0,
         maxScans: 5,
         remainingScans: 0,
         isLoading: false,
       });
     } catch (error) {
-      console.error('Error clearing activation:', error);
+      // Silent error handling
     }
   },
 }));

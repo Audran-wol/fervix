@@ -136,7 +136,8 @@ export const SettingsScreen: React.FC = () => {
           />
         </FvCard>
 
-        <FvCard style={styles.card}>
+        {/* Device Activation - commented out for production */}
+        {/* <FvCard style={styles.card}>
           <Text style={styles.cardTitle}>Device Activation</Text>
           <Text style={styles.cardText}>
             Scan QR code to activate your device or view activation status
@@ -149,10 +150,10 @@ export const SettingsScreen: React.FC = () => {
             <Ionicons name="qr-code-outline" size={20} color="#FFFFFF" />
             <Text style={styles.qrButtonText}>QR Code Scanner</Text>
           </TouchableOpacity>
-        </FvCard>
+        </FvCard> */}
 
-        {/* Power Monitor - available in production */}
-        <FvCard style={styles.card}>
+        {/* Power Monitor - commented out for production */}
+        {/* <FvCard style={styles.card}>
           <Text style={styles.cardTitle}>Power Monitor</Text>
           <Text style={styles.cardText}>
             Monitor power controller activity, view samples, and adjust device detection threshold.
@@ -165,7 +166,7 @@ export const SettingsScreen: React.FC = () => {
             <Ionicons name="speedometer-outline" size={20} color="#FFFFFF" />
             <Text style={styles.qrButtonText}>Power Monitor</Text>
           </TouchableOpacity>
-        </FvCard>
+        </FvCard> */}
       </ScrollView>
     </SafeAreaView>
   );

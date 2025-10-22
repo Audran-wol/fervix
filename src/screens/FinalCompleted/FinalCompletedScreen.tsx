@@ -7,39 +7,51 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
+import { useSettingsStore } from '../../state/useSettingsStore';
+import * as Haptics from 'expo-haptics';
 
 export const FinalCompletedScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const { soundOn, vibrationOn } = useSettingsStore();
   const animationRef = useRef<LottieView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  // Play completion chime
+  // Play completion chime/vibration
   useEffect(() => {
     (async () => {
       try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          staysActiveInBackground: false,
-          playThroughEarpieceAndroid: false,
-        });
-        const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/sound/done_chime_1s.wav'),
-          { shouldPlay: true, isLooping: false, volume: 1.0 }
-        );
-        soundRef.current = sound;
-        console.log('[FinalCompletedScreen] 🔔 Playing completion chime');
+        // Play sound if enabled
+        if (soundOn) {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: true,
+            staysActiveInBackground: false,
+            playThroughEarpieceAndroid: false,
+          });
+          const { sound } = await Audio.Sound.createAsync(
+            require('../../assets/sound/done_chime_1s.wav'),
+            { shouldPlay: true, isLooping: false, volume: 1.0 }
+          );
+          soundRef.current = sound;
+          console.log('[FinalCompletedScreen] 🔔 Playing completion chime');
+        }
+        
+        // Play vibration if enabled
+        if (vibrationOn) {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          console.log('[FinalCompletedScreen] 📳 Playing completion vibration');
+        }
       } catch (e) {
-        console.log('[FinalCompletedScreen] Sound init error:', e);
+        console.log('[FinalCompletedScreen] Sound/vibration init error:', e);
       }
     })();
     
     return () => {
       soundRef.current?.unloadAsync().catch(() => {});
     };
-  }, []);
+  }, [soundOn, vibrationOn]);
 
   useEffect(() => {
     animationRef.current?.play();
@@ -134,13 +146,16 @@ export const FinalCompletedScreen: React.FC = () => {
   });
 
   useEffect(() => {
-    // Auto-redirect to home screen after 10 seconds
+    // Set global flag to start cooling countdown
+    (window as any).shouldStartCooling = true;
+    
+    // Auto-redirect to home screen immediately
     const timer = setTimeout(() => {
       navigation.reset({
         index: 0,
         routes: [{ name: 'MainTabs' } as never],
       });
-    }, 10000);
+    }, 2000); // Reduced to 2 seconds for immediate navigation
 
     return () => clearTimeout(timer);
   }, [navigation]);
@@ -164,7 +179,7 @@ export const FinalCompletedScreen: React.FC = () => {
         </Text>
 
         <Text style={s.subtitle}>
-          You can now start a new treatment
+          Please remove Fervix from the skin!
         </Text>
       </View>
     </View>

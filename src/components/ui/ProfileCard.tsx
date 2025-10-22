@@ -180,10 +180,10 @@ const styles = StyleSheet.create({
     tintColor: '#9CA3AF',    // same color as sensitive2.png when inactive
   },
   
-  // Much bigger icon for child only
+  // Slightly smaller icon for child
   childIcon: {
-    width: 200,
-    height: 200,
+    width: 150,
+    height: 150,
   },
 
   // White icon when selected (on red background)

@@ -4,20 +4,21 @@ import {
   Text, 
   StyleSheet, 
   ScrollView, 
-  Image, 
   TouchableOpacity,
-  Linking 
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/useTheme';
-import { typography } from '../../theme/typography';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export const InfoScreen: React.FC = () => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'quick' | 'manual' | 'important' | 'versions'>('quick');
 
   const styles = StyleSheet.create({
     container: {
@@ -44,252 +45,161 @@ export const InfoScreen: React.FC = () => {
       letterSpacing: 1,
     },
 
-    // Section
-    section: {
-      backgroundColor: colors.card,
-      borderRadius: 32,
-      padding: 32,
+    // Tab Navigation
+    tabContainer: {
+      flexDirection: 'row',
+      backgroundColor: isDark ? colors.card : '#F8F9FA',
+      borderRadius: 20,
+      padding: 6,
       marginBottom: 24,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.10,
-      shadowRadius: 16,
-      elevation: 6,
-      borderWidth: 0,
-    },
-    sectionTitle: {
-      fontSize: 22,
-      fontWeight: 'bold',
-      color: '#6B7280',
-      textAlign: 'center',
-      marginBottom: 28,
-      letterSpacing: 0.5,
-    },
-
-    // Steps
-    stepsContainer: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-around',
-      paddingHorizontal: 16,
-      marginTop: 16,
-    },
-    step: {
-      flex: 1,
-      alignItems: 'center',
-      maxWidth: 110,
-    },
-    stepIcon: {
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    stepIconImage: {
-      width: 30,
-      height: 30,
-    },
-    heatingIcon: {
-      backgroundColor: colors['primary-100'],
-    },
-    applicationIcon: {
-      backgroundColor: '#E5E7FF',
-    },
-    coolingIcon: {
-      backgroundColor: '#E5F3FF',
-    },
-    stepTitle: {
-      fontSize: 14,
-      fontWeight: 'bold',
-      color: colors.textPrimary,
-      marginBottom: 6,
-      textAlign: 'center',
-    },
-    stepDescription: {
-      fontSize: 11,
-      color: colors.textMuted,
-      textAlign: 'center',
-      lineHeight: 15,
-      paddingHorizontal: 2,
-      minHeight: 45,
-    },
-
-    // Connecting Lines
-    connectingLine: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginHorizontal: 12,
-      marginTop: 35, // Align with center of step icons
-    },
-    line: {
-      width: 30,
-      height: 2,
-      backgroundColor: colors.primary,
-      borderRadius: 1,
-    },
-
-    // Tips
-    tipsHeader: {
-      marginBottom: 24,
-    },
-    tipsTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: '#6B7280',
-      letterSpacing: 0.3,
-    },
-    tipsContainer: {
-      marginBottom: 28,
-    },
-    tipItem: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      marginBottom: 16,
-    },
-    tipBullet: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.primary,
-      marginRight: 16,
-      marginTop: 6,
-    },
-    tipText: {
-      flex: 1,
-      fontSize: 15,
-      color: colors.textPrimary,
-      lineHeight: 22,
-      fontWeight: '500',
-    },
-
-    // Social
-    socialContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    socialCard: {
-      flex: 1,
-      backgroundColor: colors.card,
-      borderRadius: 24,
-      padding: 20,
-      alignItems: 'center',
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-      borderWidth: 0,
-      minHeight: 100,
-      justifyContent: 'center',
-    },
-    socialIconContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-    },
-    socialLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      textAlign: 'center',
-      alignSelf: 'stretch',
-      lineHeight: 16,
-      marginTop: 8,
-    },
-
-    // FAQ
-    faqSection: {
-      marginBottom: 32,
-    },
-    faqHeader: {
-      marginBottom: 24,
-      alignItems: 'center',
-    },
-    faqTitle: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: '#6B7280',
-      marginBottom: 8,
-      letterSpacing: 0.5,
-      textAlign: 'center',
-    },
-    faqSubtitle: {
-      fontSize: 14,
-      color: colors.textMuted,
-      textAlign: 'center',
-      fontWeight: '500',
-    },
-    faqContainer: {
-      gap: 12,
-    },
-    faqItem: {
-      backgroundColor: colors.card,
-      borderRadius: 24,
-      overflow: 'hidden',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      elevation: 2,
-      borderWidth: 0,
-    },
-    faqItemExpanded: {
-      backgroundColor: colors['primary-100'],
-      shadowOpacity: 0.10,
+      shadowOpacity: 0.12,
       shadowRadius: 12,
       elevation: 4,
     },
-    faqQuestionRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 24,
-    },
-    faqQuestionContainer: {
+    tabButton: {
       flex: 1,
-      marginRight: 16,
-    },
-    faqQuestion: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.textPrimary,
-      lineHeight: 22,
-    },
-    faqQuestionExpanded: {
-      color: colors.primary,
-      fontWeight: '700',
-    },
-    faqChevron: {
-      width: 32,
-      height: 32,
+      paddingVertical: 16,
+      paddingHorizontal: 12,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 16,
+      minHeight: 56,
     },
-    faqDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginHorizontal: 24,
+    tabButtonActive: {
+      backgroundColor: colors.primary,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      elevation: 3,
     },
-    faqAnswerContainer: {
-      paddingHorizontal: 24,
-      paddingVertical: 20,
+    tabText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textMuted,
+      textAlign: 'center',
+      lineHeight: 16,
     },
-    faqAnswer: {
+    tabTextActive: {
+      color: '#FFFFFF',
+      fontWeight: '700',
+    },
+
+    // Content Sections
+    contentSection: {
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      padding: 24,
+      marginBottom: 20,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.textPrimary,
+      marginBottom: 16,
+    },
+    sectionText: {
       fontSize: 15,
       color: colors.textMuted,
       lineHeight: 24,
-      fontWeight: '400',
+      marginBottom: 16,
+    },
+    bulletPoint: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 12,
+    },
+    bullet: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.primary,
+      marginRight: 12,
+      marginTop: 8,
+    },
+    bulletText: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.textMuted,
+      lineHeight: 22,
+    },
+
+    // Feature Cards
+    featureGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      marginTop: 16,
+    },
+    featureCard: {
+      width: (screenWidth - 64) / 2 - 8,
+      backgroundColor: isDark ? colors.card : '#F8F9FA',
+      borderRadius: 16,
+      padding: 20,
+      alignItems: 'center',
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : '#E5E7EB',
+      shadowColor: isDark ? '#000' : colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    featureIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors['primary-100'],
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
+    featureTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+    featureDescription: {
+      fontSize: 12,
+      color: colors.textMuted,
+      textAlign: 'center',
+      lineHeight: 16,
+    },
+
+    // Version Info
+    versionCard: {
+      backgroundColor: isDark ? colors.card : '#F8F9FA',
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : '#E5E7EB',
+      shadowColor: isDark ? '#000' : colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    versionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textPrimary,
+      marginBottom: 8,
+    },
+    versionText: {
+      fontSize: 14,
+      color: colors.textMuted,
+      lineHeight: 20,
     },
 
     bottomSpacing: {
@@ -297,29 +207,130 @@ export const InfoScreen: React.FC = () => {
     },
   });
 
-  const handleSocialPress = (platform: string) => {
-    // Handle social media links
-    const urls = {
-      instagram: 'https://instagram.com/fervix',
-      youtube: 'https://youtube.com/fervix',
-      support: 'mailto:support@fervix.com'
-    };
-    
-    if (urls[platform as keyof typeof urls]) {
-      Linking.openURL(urls[platform as keyof typeof urls]);
+  const tabs = [
+    { key: 'quick', label: t('info.tabs.quickStart') },
+    { key: 'manual', label: t('info.tabs.userManual') },
+    { key: 'important', label: t('info.tabs.importantInfo') },
+    { key: 'versions', label: t('info.tabs.appVersions') }
+  ];
+
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'quick':
+        return (
+          <>
+            <View style={styles.contentSection}>
+              <Text style={styles.sectionTitle}>{t('info.quickStart.title')}</Text>
+              <Text style={styles.sectionText}>{t('info.quickStart.description')}</Text>
+              
+              <View style={styles.featureGrid}>
+                <View style={styles.featureCard}>
+                  <View style={styles.featureIcon}>
+                    <Ionicons name="flash" size={24} color={colors.primary} />
+                  </View>
+                  <Text style={styles.featureTitle}>{t('info.quickStart.feature1.title')}</Text>
+                  <Text style={styles.featureDescription}>{t('info.quickStart.feature1.description')}</Text>
+                </View>
+                
+                <View style={styles.featureCard}>
+                  <View style={styles.featureIcon}>
+                    <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
+                  </View>
+                  <Text style={styles.featureTitle}>{t('info.quickStart.feature2.title')}</Text>
+                  <Text style={styles.featureDescription}>{t('info.quickStart.feature2.description')}</Text>
+                </View>
+                
+                <View style={styles.featureCard}>
+                  <View style={styles.featureIcon}>
+                    <Ionicons name="timer" size={24} color={colors.primary} />
+                  </View>
+                  <Text style={styles.featureTitle}>{t('info.quickStart.feature3.title')}</Text>
+                  <Text style={styles.featureDescription}>{t('info.quickStart.feature3.description')}</Text>
+                </View>
+                
+                <View style={styles.featureCard}>
+                  <View style={styles.featureIcon}>
+                    <Ionicons name="thermometer" size={24} color={colors.primary} />
+                  </View>
+                  <Text style={styles.featureTitle}>{t('info.quickStart.feature4.title')}</Text>
+                  <Text style={styles.featureDescription}>{t('info.quickStart.feature4.description')}</Text>
+                </View>
+              </View>
+            </View>
+          </>
+        );
+
+      case 'manual':
+        return (
+          <>
+            <View style={styles.contentSection}>
+              <Text style={styles.sectionTitle}>{t('info.manual.title')}</Text>
+              <Text style={styles.sectionText}>{t('info.manual.description')}</Text>
+              
+              <View style={styles.bulletPoint}>
+                <View style={styles.bullet} />
+                <Text style={styles.bulletText}>{t('info.manual.step1')}</Text>
+              </View>
+              <View style={styles.bulletPoint}>
+                <View style={styles.bullet} />
+                <Text style={styles.bulletText}>{t('info.manual.step2')}</Text>
+              </View>
+              <View style={styles.bulletPoint}>
+                <View style={styles.bullet} />
+                <Text style={styles.bulletText}>{t('info.manual.step3')}</Text>
+              </View>
+              <View style={styles.bulletPoint}>
+                <View style={styles.bullet} />
+                <Text style={styles.bulletText}>{t('info.manual.step4')}</Text>
+              </View>
+            </View>
+          </>
+        );
+
+      case 'important':
+        return (
+          <>
+            <View style={styles.contentSection}>
+              <Text style={styles.sectionTitle}>{t('info.important.title')}</Text>
+              <Text style={styles.sectionText}>{t('info.important.description')}</Text>
+              
+              <View style={styles.bulletPoint}>
+                <View style={styles.bullet} />
+                <Text style={styles.bulletText}>{t('info.important.warning1')}</Text>
+              </View>
+              <View style={styles.bulletPoint}>
+                <View style={styles.bullet} />
+                <Text style={styles.bulletText}>{t('info.important.warning2')}</Text>
+              </View>
+              <View style={styles.bulletPoint}>
+                <View style={styles.bullet} />
+                <Text style={styles.bulletText}>{t('info.important.warning3')}</Text>
+              </View>
+            </View>
+          </>
+        );
+
+      case 'versions':
+        return (
+          <>
+            <View style={styles.contentSection}>
+              <Text style={styles.sectionTitle}>{t('info.versions.title')}</Text>
+              <Text style={styles.sectionText}>{t('info.versions.description')}</Text>
+            </View>
+            
+            <View style={styles.versionCard}>
+              <Text style={styles.versionTitle}>{t('info.versions.current.title')}</Text>
+              <Text style={styles.versionText}>{t('info.versions.current.version')}</Text>
+              <Text style={styles.versionText}>{t('info.versions.current.releaseDate')}</Text>
+            </View>
+          </>
+        );
+
+      default:
+        return null;
     }
   };
-
-  const toggleFaq = (index: number) => {
-    setExpandedFaq(expandedFaq === index ? null : index);
-  };
-
-  const faqItems = [
-    { q: t('info.faq.question1'), a: t('info.faq.answer1') },
-    { q: t('info.faq.question2'), a: t('info.faq.answer2') },
-    { q: t('info.faq.question3'), a: t('info.faq.answer3') },
-    { q: t('info.faq.question4'), a: t('info.faq.answer4') }
-  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -331,192 +342,33 @@ export const InfoScreen: React.FC = () => {
             <Text style={styles.title}>FERVIX</Text>
           </View>
 
-          {/* How it Works Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('info.howItWorks')}</Text>
-            
-            <View style={styles.stepsContainer}>
-              {/* Step 1: Heating */}
-              <View style={styles.step}>
-                <View style={[styles.stepIcon, styles.heatingIcon]}>
-                  <Image 
-                    source={require('../../assets/images/icons/heating.png')}
-                    style={styles.stepIconImage}
-                    resizeMode="contain"
-                  />
-                </View>
-                <Text style={styles.stepTitle} numberOfLines={1}>{t('info.steps.heating')}</Text>
-                <Text style={styles.stepDescription} numberOfLines={3}>{t('info.steps.heatingDescription')}</Text>
-              </View>
-
-              {/* Connecting Line */}
-              <View style={styles.connectingLine}>
-                <View style={styles.line} />
-              </View>
-
-              {/* Step 2: Application */}
-              <View style={styles.step}>
-                <View style={[styles.stepIcon, styles.applicationIcon]}>
-                  <Image 
-                    source={require('../../assets/images/icons/application.png')}
-                    style={styles.stepIconImage}
-                    resizeMode="contain"
-                  />
-                </View>
-                <Text style={styles.stepTitle} numberOfLines={1}>{t('info.steps.application')}</Text>
-                <Text style={styles.stepDescription} numberOfLines={3}>{t('info.steps.applicationDescription')}</Text>
-              </View>
-
-              {/* Connecting Line */}
-              <View style={styles.connectingLine}>
-                <View style={styles.line} />
-              </View>
-
-              {/* Step 3: Cooling */}
-              <View style={styles.step}>
-                <View style={[styles.stepIcon, styles.coolingIcon]}>
-                  <Image 
-                    source={require('../../assets/images/icons/cooling.png')}
-                    style={styles.stepIconImage}
-                    resizeMode="contain"
-                  />
-                </View>
-                <Text style={styles.stepTitle} numberOfLines={1}>{t('info.steps.cooling')}</Text>
-                <Text style={styles.stepDescription} numberOfLines={3}>{t('info.steps.coolingDescription')}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Tips Section */}
-          <View style={styles.section}>
-            <View style={styles.tipsHeader}>
-              <Text style={styles.tipsTitle}>{t('info.tips.title')}</Text>
-            </View>
-            
-            <View style={styles.tipsContainer}>
-              <View style={styles.tipItem}>
-                <View style={styles.tipBullet} />
-                <Text style={styles.tipText}>{t('info.tips.tip1')}</Text>
-              </View>
-              <View style={styles.tipItem}>
-                <View style={styles.tipBullet} />
-                <Text style={styles.tipText}>{t('info.tips.tip2')}</Text>
-              </View>
-              <View style={styles.tipItem}>
-                <View style={styles.tipBullet} />
-                <Text style={styles.tipText}>{t('info.tips.tip3')}</Text>
-              </View>
-            </View>
-
-            {/* Social Links */}
-            <View style={styles.socialContainer}>
+          {/* Tab Navigation */}
+          <View style={styles.tabContainer}>
+            {tabs.map((tab) => (
               <TouchableOpacity 
-                style={[styles.socialCard, styles.socialInstagram]}
-                onPress={() => handleSocialPress('instagram')}
+                key={tab.key}
+                style={[
+                  styles.tabButton,
+                  activeTab === tab.key && styles.tabButtonActive
+                ]}
+                onPress={() => setActiveTab(tab.key as any)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.socialIconContainer, { backgroundColor: '#E4405F' }]}>
-                  <Ionicons 
-                    name="logo-instagram" 
-                    size={24} 
-                    color="#FFFFFF" 
-                  />
-                </View>
-                <Text style={styles.socialLabel} numberOfLines={2}>
-                  {t('info.social.instagram')}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.socialCard, styles.socialYoutube]}
-                onPress={() => handleSocialPress('youtube')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.socialIconContainer, { backgroundColor: '#FF0000' }]}>
-                  <Ionicons 
-                    name="logo-youtube" 
-                    size={24} 
-                    color="#FFFFFF" 
-                  />
-                </View>
-                <Text style={styles.socialLabel} numberOfLines={2}>
-                  {t('info.social.youtube')}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.socialCard, styles.socialSupport]}
-                onPress={() => handleSocialPress('support')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.socialIconContainer, { backgroundColor: colors.primary }]}>
-                  <Ionicons 
-                    name="help-circle" 
-                    size={24} 
-                    color="#FFFFFF" 
-                  />
-                </View>
-                <Text style={styles.socialLabel} numberOfLines={2}>
-                  {t('info.social.support')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* FAQ Section */}
-          <View style={styles.faqSection}>
-            <View style={styles.faqHeader}>
-              <Text style={styles.faqTitle}>{t('info.faq.title')}</Text>
-              <Text style={styles.faqSubtitle}>{t('info.faq.subtitle')}</Text>
-            </View>
-            
-            <View style={styles.faqContainer}>
-              {faqItems.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
+                <Text 
                   style={[
-                    styles.faqItem,
-                    expandedFaq === index && styles.faqItemExpanded
+                    styles.tabText,
+                    activeTab === tab.key && styles.tabTextActive
                   ]}
-                  onPress={() => toggleFaq(index)}
-                  activeOpacity={0.8}
+                  numberOfLines={2}
                 >
-                  <View style={styles.faqQuestionRow}>
-                    <View style={styles.faqQuestionContainer}>
-                      <Text 
-                        style={[
-                          styles.faqQuestion,
-                          expandedFaq === index && styles.faqQuestionExpanded
-                        ]} 
-                        numberOfLines={2}
-                      >
-                        {item.q}
+                  {tab.label}
                       </Text>
-                    </View>
-                    <View style={[
-                      styles.faqChevron,
-                      { backgroundColor: expandedFaq === index ? colors.primary : colors['primary-100'] }
-                    ]}>
-                      <Ionicons
-                        name={expandedFaq === index ? 'chevron-up' : 'chevron-down'}
-                        size={20}
-                        color={expandedFaq === index ? '#FFFFFF' : colors.primary}
-                      />
-                    </View>
-                  </View>
-                  
-                  {expandedFaq === index && (
-                    <>
-                      <View style={styles.faqDivider} />
-                      <View style={styles.faqAnswerContainer}>
-                        <Text style={styles.faqAnswer}>{item.a}</Text>
-                      </View>
-                    </>
-                  )}
                 </TouchableOpacity>
               ))}
-            </View>
           </View>
+
+          {/* Dynamic Content */}
+          {renderContent()}
 
           <View style={styles.bottomSpacing} />
         </View>
