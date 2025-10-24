@@ -11,6 +11,7 @@ import {
 import { useTheme } from '../../theme/useTheme';
 import { typography } from '../../theme/typography';
 import * as Haptics from 'expo-haptics';
+import { Audio } from 'expo-av';
 
 interface SettingToggleRowProps {
   leftIcon?: React.ReactNode;
@@ -30,6 +31,28 @@ export const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
   const { colors } = useTheme();
   const thumbPosition = React.useRef(new Animated.Value(value ? 32 : 0)).current;
   const trackColor = React.useRef(new Animated.Value(value ? 1 : 0)).current;
+  const soundRef = React.useRef<Audio.Sound | null>(null);
+
+  // Initialize sound on mount
+  React.useEffect(() => {
+    const initializeSound = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sound/toogle_switch.mp3'),
+          { shouldPlay: false, volume: 0.7 }
+        );
+        soundRef.current = sound;
+      } catch (e) {
+        console.log('[SettingToggleRow] Sound initialization error:', e);
+      }
+    };
+    
+    initializeSound();
+    
+    return () => {
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
+  }, []);
 
   React.useEffect(() => {
     Animated.parallel([
@@ -46,10 +69,22 @@ export const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
     ]).start();
   }, [value]);
 
-  const handleToggle = () => {
+  const handleToggle = async () => {
+    // Play toggle sound
+    try {
+      if (soundRef.current) {
+        await soundRef.current.replayAsync();
+      }
+    } catch (e) {
+      console.log('[SettingToggleRow] Sound playback error:', e);
+    }
+    
+    // Haptic feedback
     if (Platform.OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    
+    // Update value
     onValueChange(!value);
   };
 

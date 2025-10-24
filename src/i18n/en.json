@@ -41,6 +41,12 @@
     "changeLanguage": "Change Language",
     "saveSettings": "Save Settings"
   },
+  "home": {
+    "deviceConnected": "Device Connected",
+    "coolingDown": "Cooling Down",
+    "pressDevice": "Press device firmly against skin",
+    "deviceDetected": "Device Detected"
+  },
   "labels": {
     "temperature": "Temperature",
     "duration": "Duration",
@@ -141,7 +147,108 @@
     "manualDescription": "Download the complete user manual for detailed instructions.",
     "downloadManual": "Download Manual",
     "faq": "FAQ",
-    "faqDescription": "Find answers to frequently asked questions."
+    "faqDescription": "Find answers to frequently asked questions.",
+    "faq1": {
+      "question": "How do I connect my Fervix device?",
+      "answer": "Simply plug your Fervix device into the USB-C port of your phone. The app will automatically detect the device and guide you through the setup process."
+    },
+    "faq2": {
+      "question": "What should I do if the device is not detected?",
+      "answer": "Make sure your device is fully charged and properly connected. Try unplugging and reconnecting the device. If the issue persists, restart the app or contact support."
+    },
+    "faq3": {
+      "question": "How long does a treatment session take?",
+      "answer": "A complete treatment session takes approximately 35 seconds: 10 seconds for heating, 20 seconds for treatment, and 5 seconds for cooldown."
+    },
+    "faq4": {
+      "question": "Can I use the device multiple times per day?",
+      "answer": "Yes, you can use the device up to 3 times per day. We recommend waiting at least 4 hours between treatment sessions for optimal results."
+    },
+    "faq5": {
+      "question": "Is the device safe for all skin types?",
+      "answer": "The device is designed for most skin types. However, if you have sensitive skin, test on a small area first. Avoid use on broken or irritated skin."
+    },
+    "faq6": {
+      "question": "How do I clean and maintain the device?",
+      "answer": "Wipe the device surface with a dry cloth after each use. For deeper cleaning, use alcohol wipes. Never submerge the device in water."
+    },
+    "quickStart": {
+      "title": "Quick Start",
+      "intro": "Get started with Fervix in three simple steps.",
+      "step1": "Connect your device to the USB-C port",
+      "step2": "Wait for automatic device detection",
+      "step3": "Follow the treatment process automatically",
+      "learnMore": "Learn more about detailed setup and safety guidelines."
+    },
+    "userGuide": {
+      "title": "User Guide",
+      "setup": {
+        "title": "Setup & Installation",
+        "content": [
+          "Ensure your device is fully charged",
+          "Connect via USB-C port only",
+          "Keep device within 2 meters during treatment"
+        ]
+      },
+      "profiles": {
+        "title": "Treatment Profiles",
+        "content": [
+          "Adult: 20-second treatment cycle",
+          "Child: 15-second treatment cycle",
+          "Custom: Adjustable timing settings"
+        ]
+      },
+      "timing": {
+        "title": "Timing & Cycles",
+        "content": [
+          "Heating: 10 seconds warm-up",
+          "Treatment: 20 seconds active",
+          "Cooldown: 5 seconds safety period"
+        ]
+      },
+      "cleaning": {
+        "title": "Cleaning & Maintenance",
+        "content": [
+          "Clean device surface after each use",
+          "Store in dry, cool location",
+          "Replace every 6 months or as needed"
+        ]
+      }
+    },
+    "safety": {
+      "title": "Safety",
+      "warning": "⚠️ Never use on broken or irritated skin. Discontinue use if you experience any discomfort.",
+      "checklist": "Safety Checklist",
+      "items": [
+        "Use only on clean, dry skin",
+        "Keep device away from water and moisture",
+        "Do not use on children under 12 without supervision",
+        "Stop immediately if skin becomes red or irritated",
+        "Store in a safe place away from children",
+        "Do not modify or disassemble the device",
+        "Consult a healthcare professional if you have concerns"
+      ]
+    },
+    "versions": {
+      "title": "Versions",
+      "intro": "Current app version and recent updates.",
+      "v1_2_0": {
+        "date": "Dec 15, 2024",
+        "changes": "Enhanced device detection, improved UI, bug fixes"
+      },
+      "v1_1_5": {
+        "date": "Nov 28, 2024",
+        "changes": "Performance optimizations, stability improvements"
+      },
+      "v1_1_0": {
+        "date": "Nov 10, 2024",
+        "changes": "Added dark mode, new treatment profiles"
+      },
+      "v1_0_0": {
+        "date": "Oct 25, 2024",
+        "changes": "Initial release with core treatment functionality"
+      }
+    }
   },
   "settings": {
     "title": "Settings",

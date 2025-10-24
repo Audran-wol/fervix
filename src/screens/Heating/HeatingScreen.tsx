@@ -12,13 +12,15 @@ import {
 import LottieView from 'lottie-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
 import { useSessionStore } from '../../state';
 import { useSettingsStore } from '../../state/useSettingsStore';
+import { PowerController } from '../../state/power';
+import type { SampleEvent } from '../../state/power';
 import * as Haptics from 'expo-haptics';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -31,6 +33,7 @@ export const HeatingScreen: React.FC = () => {
   const { soundOn, vibrationOn } = useSettingsStore();
   const [progress, setProgress] = useState(0);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const [deviceDisconnected, setDeviceDisconnected] = useState(false);
   
   const styles = StyleSheet.create({
     container: {
@@ -134,10 +137,40 @@ export const HeatingScreen: React.FC = () => {
 
   const circleSize = Math.max(screenWidth, screenHeight) * 1.9;
 
-  // ✅ SIMPLE SOLUTION: Play sound/vibration + navigate after 8 seconds (faster)
+  // ✅ Prevent back navigation during heating phase
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        // Prevent back navigation during heating
+        return true;
+      };
+
+      // Add back button listener
+      const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        // Prevent any navigation away from heating screen
+        e.preventDefault();
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    }, [navigation])
+  );
+
+  // ✅ Device disconnect detection during heating
   useEffect(() => {
-    console.log('[HeatingScreen] 🔥 Starting heating phase...');
+    console.log('[HeatingScreen] 🔥 Starting heating phase with device monitoring...');
     
+    // Subscribe to power events to detect device disconnect
+    const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
+      // Check if device is disconnected (charging state or very low current)
+      if (event.is_charging || (event.current_mA && Math.abs(event.current_mA) < 0.05)) {
+        console.log('[HeatingScreen] ⚠️ Device disconnected during heating - navigating to abort');
+        setDeviceDisconnected(true);
+        navigation.navigate('Aborted' as never);
+      }
+    });
+
     // Play sound if enabled
     if (soundOn) {
       (async () => {
@@ -171,12 +204,14 @@ export const HeatingScreen: React.FC = () => {
       console.log('[HeatingScreen] 📳 Starting heating vibration pattern');
     }
     
-    // Navigate after 10 seconds (smooth transition)
+    // Navigate after 10 seconds (only if device still connected)
     const timer = setTimeout(() => {
-      console.log('[HeatingScreen] ✅ 10 seconds passed - navigating to Treatment');
-      soundRef.current?.stopAsync().catch(() => {});
-      if (vibrationInterval) clearInterval(vibrationInterval);
-      navigation.navigate('Treatment' as never);
+      if (!deviceDisconnected) {
+        console.log('[HeatingScreen] ✅ 10 seconds passed - navigating to Treatment');
+        soundRef.current?.stopAsync().catch(() => {});
+        if (vibrationInterval) clearInterval(vibrationInterval);
+        navigation.navigate('Treatment' as never);
+      }
     }, 10000); // 10 seconds - smooth transition!
     
     return () => {
@@ -185,8 +220,9 @@ export const HeatingScreen: React.FC = () => {
       soundRef.current?.stopAsync().then(() => {
         soundRef.current?.unloadAsync();
       }).catch(() => {});
+      unsub(); // Unsubscribe from power events
     };
-  }, [navigation, soundOn, vibrationOn]);
+  }, [navigation, soundOn, vibrationOn, deviceDisconnected]);
 
   useEffect(() => {
     // Start filling animation (matches 10 second timer)

@@ -179,10 +179,30 @@ export const SupportScreen: React.FC = () => {
   };
 
   const faqItems = [
-    { q: t('info.faq.question1'), a: t('info.faq.answer1') },
-    { q: t('info.faq.question2'), a: t('info.faq.answer2') },
-    { q: t('info.faq.question3'), a: t('info.faq.answer3') },
-    { q: t('info.faq.question4'), a: t('info.faq.answer4') }
+    { 
+      q: t('support.faq1.question'), 
+      a: t('support.faq1.answer') 
+    },
+    { 
+      q: t('support.faq2.question'), 
+      a: t('support.faq2.answer') 
+    },
+    { 
+      q: t('support.faq3.question'), 
+      a: t('support.faq3.answer') 
+    },
+    { 
+      q: t('support.faq4.question'), 
+      a: t('support.faq4.answer') 
+    },
+    { 
+      q: t('support.faq5.question'), 
+      a: t('support.faq5.answer') 
+    },
+    { 
+      q: t('support.faq6.question'), 
+      a: t('support.faq6.answer') 
+    }
   ];
 
   return (

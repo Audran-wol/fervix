@@ -41,6 +41,12 @@
     "changeLanguage": "Sprache ändern",
     "saveSettings": "Einstellungen speichern"
   },
+  "home": {
+    "deviceConnected": "Gerät verbunden",
+    "coolingDown": "Abkühlen",
+    "pressDevice": "Gerät fest gegen die Haut drücken",
+    "deviceDetected": "Gerät erkannt"
+  },
   "labels": {
     "temperature": "Temperatur",
     "duration": "Dauer",
@@ -122,7 +128,108 @@
     "downloadManual": "Handbuch herunterladen",
     "faq": "FAQ",
     "faqDescription": "Finden Sie Antworten auf häufig gestellte Fragen.",
-    "viewFaq": "FAQ anzeigen"
+    "viewFaq": "FAQ anzeigen",
+    "faq1": {
+      "question": "Wie verbinde ich mein Fervix-Gerät?",
+      "answer": "Stecken Sie Ihr Fervix-Gerät einfach in den USB-C-Anschluss Ihres Telefons. Die App erkennt das Gerät automatisch und führt Sie durch den Einrichtungsprozess."
+    },
+    "faq2": {
+      "question": "Was soll ich tun, wenn das Gerät nicht erkannt wird?",
+      "answer": "Stellen Sie sicher, dass Ihr Gerät vollständig aufgeladen und ordnungsgemäß verbunden ist. Versuchen Sie, das Gerät zu trennen und wieder anzuschließen. Wenn das Problem weiterhin besteht, starten Sie die App neu oder wenden Sie sich an den Support."
+    },
+    "faq3": {
+      "question": "Wie lange dauert eine Behandlungssitzung?",
+      "answer": "Eine vollständige Behandlungssitzung dauert etwa 35 Sekunden: 10 Sekunden zum Aufheizen, 20 Sekunden für die Behandlung und 5 Sekunden zum Abkühlen."
+    },
+    "faq4": {
+      "question": "Kann ich das Gerät mehrmals täglich verwenden?",
+      "answer": "Ja, Sie können das Gerät bis zu 3 Mal pro Tag verwenden. Wir empfehlen, mindestens 4 Stunden zwischen den Behandlungssitzungen zu warten, um optimale Ergebnisse zu erzielen."
+    },
+    "faq5": {
+      "question": "Ist das Gerät für alle Hauttypen sicher?",
+      "answer": "Das Gerät ist für die meisten Hauttypen konzipiert. Wenn Sie jedoch empfindliche Haut haben, testen Sie es zuerst an einer kleinen Stelle. Vermeiden Sie die Verwendung auf verletzter oder gereizter Haut."
+    },
+    "faq6": {
+      "question": "Wie reinige und pflege ich das Gerät?",
+      "answer": "Wischen Sie die Geräteoberfläche nach jeder Verwendung mit einem trockenen Tuch ab. Für eine tiefere Reinigung verwenden Sie Alkoholtücher. Tauchen Sie das Gerät niemals in Wasser ein."
+    },
+    "quickStart": {
+      "title": "Schnellstart",
+      "intro": "Beginnen Sie mit Fervix in drei einfachen Schritten.",
+      "step1": "Verbinden Sie Ihr Gerät mit dem USB-C-Anschluss",
+      "step2": "Warten Sie auf die automatische Geräteerkennung",
+      "step3": "Folgen Sie dem Behandlungsprozess automatisch",
+      "learnMore": "Erfahren Sie mehr über detaillierte Einrichtung und Sicherheitsrichtlinien."
+    },
+    "userGuide": {
+      "title": "Benutzerhandbuch",
+      "setup": {
+        "title": "Einrichtung & Installation",
+        "content": [
+          "Stellen Sie sicher, dass Ihr Gerät vollständig aufgeladen ist",
+          "Nur über USB-C-Anschluss verbinden",
+          "Gerät während der Behandlung innerhalb von 2 Metern halten"
+        ]
+      },
+      "profiles": {
+        "title": "Behandlungsprofile",
+        "content": [
+          "Erwachsene: 20-Sekunden-Behandlungszyklus",
+          "Kind: 15-Sekunden-Behandlungszyklus",
+          "Benutzerdefiniert: Einstellbare Zeitsteuerung"
+        ]
+      },
+      "timing": {
+        "title": "Zeitsteuerung & Zyklen",
+        "content": [
+          "Aufheizen: 10 Sekunden Aufwärmphase",
+          "Behandlung: 20 Sekunden aktiv",
+          "Abkühlen: 5 Sekunden Sicherheitsperiode"
+        ]
+      },
+      "cleaning": {
+        "title": "Reinigung & Wartung",
+        "content": [
+          "Geräteoberfläche nach jeder Verwendung reinigen",
+          "An trockenen, kühlen Ort aufbewahren",
+          "Alle 6 Monate oder nach Bedarf ersetzen"
+        ]
+      }
+    },
+    "safety": {
+      "title": "Sicherheit",
+      "warning": "⚠️ Niemals auf verletzte oder gereizte Haut verwenden. Beenden Sie die Verwendung bei Unbehagen.",
+      "checklist": "Sicherheitscheckliste",
+      "items": [
+        "Nur auf saubere, trockene Haut verwenden",
+        "Gerät von Wasser und Feuchtigkeit fernhalten",
+        "Nicht bei Kindern unter 12 ohne Aufsicht verwenden",
+        "Sofort stoppen, wenn Haut rot oder gereizt wird",
+        "An sicherem Ort außerhalb der Reichweite von Kindern aufbewahren",
+        "Gerät nicht modifizieren oder zerlegen",
+        "Bei Bedenken einen Arzt konsultieren"
+      ]
+    },
+    "versions": {
+      "title": "Versionen",
+      "intro": "Aktuelle App-Version und kürzliche Updates.",
+      "v1_2_0": {
+        "date": "15. Dez. 2024",
+        "changes": "Verbesserte Geräteerkennung, verbesserte Benutzeroberfläche, Fehlerbehebungen"
+      },
+      "v1_1_5": {
+        "date": "28. Nov. 2024",
+        "changes": "Leistungsoptimierungen, Stabilitätsverbesserungen"
+      },
+      "v1_1_0": {
+        "date": "10. Nov. 2024",
+        "changes": "Dunkler Modus hinzugefügt, neue Behandlungsprofile"
+      },
+      "v1_0_0": {
+        "date": "25. Okt. 2024",
+        "changes": "Erstveröffentlichung mit Kern-Behandlungsfunktionalität"
+      }
+    }
   },
   "settings": {
     "title": "Einstellungen",

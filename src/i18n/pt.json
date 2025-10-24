@@ -41,6 +41,12 @@
     "changeLanguage": "Alterar Idioma",
     "saveSettings": "Salvar Configurações"
   },
+  "home": {
+    "deviceConnected": "Dispositivo Conectado",
+    "coolingDown": "Resfriando",
+    "pressDevice": "Pressione o dispositivo firmemente contra a pele",
+    "deviceDetected": "Dispositivo Detectado"
+  },
   "labels": {
     "temperature": "Temperatura",
     "duration": "Duração",
@@ -122,7 +128,108 @@
     "downloadManual": "Baixar Manual",
     "faq": "FAQ",
     "faqDescription": "Encontre respostas para perguntas frequentes.",
-    "viewFaq": "Ver FAQ"
+    "viewFaq": "Ver FAQ",
+    "faq1": {
+      "question": "Como conectar meu dispositivo Fervix?",
+      "answer": "Simplesmente conecte seu dispositivo Fervix na porta USB-C do seu telefone. O aplicativo detectará automaticamente o dispositivo e o guiará pelo processo de configuração."
+    },
+    "faq2": {
+      "question": "O que devo fazer se o dispositivo não for detectado?",
+      "answer": "Certifique-se de que seu dispositivo está totalmente carregado e conectado corretamente. Tente desconectar e reconectar o dispositivo. Se o problema persistir, reinicie o aplicativo ou entre em contato com o suporte."
+    },
+    "faq3": {
+      "question": "Quanto tempo dura uma sessão de tratamento?",
+      "answer": "Uma sessão completa de tratamento leva aproximadamente 35 segundos: 10 segundos para aquecimento, 20 segundos para tratamento e 5 segundos para resfriamento."
+    },
+    "faq4": {
+      "question": "Posso usar o dispositivo várias vezes por dia?",
+      "answer": "Sim, você pode usar o dispositivo até 3 vezes por dia. Recomendamos aguardar pelo menos 4 horas entre as sessões de tratamento para obter resultados ótimos."
+    },
+    "faq5": {
+      "question": "O dispositivo é seguro para todos os tipos de pele?",
+      "answer": "O dispositivo é projetado para a maioria dos tipos de pele. No entanto, se você tem pele sensível, teste primeiro em uma pequena área. Evite usar em pele machucada ou irritada."
+    },
+    "faq6": {
+      "question": "Como limpar e manter o dispositivo?",
+      "answer": "Limpe a superfície do dispositivo com um pano seco após cada uso. Para limpeza mais profunda, use lenços com álcool. Nunca submerja o dispositivo na água."
+    },
+    "quickStart": {
+      "title": "Início Rápido",
+      "intro": "Comece com o Fervix em três passos simples.",
+      "step1": "Conecte seu dispositivo à porta USB-C",
+      "step2": "Aguarde a detecção automática do dispositivo",
+      "step3": "Siga o processo de tratamento automaticamente",
+      "learnMore": "Saiba mais sobre configuração detalhada e diretrizes de segurança."
+    },
+    "userGuide": {
+      "title": "Guia do Usuário",
+      "setup": {
+        "title": "Configuração e Instalação",
+        "content": [
+          "Certifique-se de que seu dispositivo está totalmente carregado",
+          "Conecte apenas via porta USB-C",
+          "Mantenha o dispositivo dentro de 2 metros durante o tratamento"
+        ]
+      },
+      "profiles": {
+        "title": "Perfis de Tratamento",
+        "content": [
+          "Adulto: ciclo de tratamento de 20 segundos",
+          "Criança: ciclo de tratamento de 15 segundos",
+          "Personalizado: configurações de tempo ajustáveis"
+        ]
+      },
+      "timing": {
+        "title": "Tempo e Ciclos",
+        "content": [
+          "Aquecimento: 10 segundos de aquecimento",
+          "Tratamento: 20 segundos ativo",
+          "Resfriamento: 5 segundos de período de segurança"
+        ]
+      },
+      "cleaning": {
+        "title": "Limpeza e Manutenção",
+        "content": [
+          "Limpe a superfície do dispositivo após cada uso",
+          "Armazene em local seco e fresco",
+          "Substitua a cada 6 meses ou conforme necessário"
+        ]
+      }
+    },
+    "safety": {
+      "title": "Segurança",
+      "warning": "⚠️ Nunca use em pele machucada ou irritada. Descontinue o uso se sentir desconforto.",
+      "checklist": "Lista de Verificação de Segurança",
+      "items": [
+        "Use apenas em pele limpa e seca",
+        "Mantenha o dispositivo longe de água e umidade",
+        "Não use em crianças menores de 12 anos sem supervisão",
+        "Pare imediatamente se a pele ficar vermelha ou irritada",
+        "Armazene em local seguro longe de crianças",
+        "Não modifique ou desmonte o dispositivo",
+        "Consulte um profissional de saúde se tiver preocupações"
+      ]
+    },
+    "versions": {
+      "title": "Versões",
+      "intro": "Versão atual do aplicativo e atualizações recentes.",
+      "v1_2_0": {
+        "date": "15 de dez. de 2024",
+        "changes": "Detecção de dispositivo aprimorada, interface melhorada, correções de bugs"
+      },
+      "v1_1_5": {
+        "date": "28 de nov. de 2024",
+        "changes": "Otimizações de desempenho, melhorias de estabilidade"
+      },
+      "v1_1_0": {
+        "date": "10 de nov. de 2024",
+        "changes": "Modo escuro adicionado, novos perfis de tratamento"
+      },
+      "v1_0_0": {
+        "date": "25 de out. de 2024",
+        "changes": "Lançamento inicial com funcionalidade principal de tratamento"
+      }
+    }
   },
   "settings": {
     "title": "Configurações",

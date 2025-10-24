@@ -122,7 +122,12 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         </View>
 
         {/* LABEL (very small gap) */}
-        <Text style={[styles.label, selected && styles.labelSelected, { color: isDark ? themeColors.textPrimary : colors.textPrimary }]}>{label}</Text>
+        <Text style={[
+          styles.label, 
+          selected && styles.labelSelected, 
+          { color: isDark ? themeColors.textPrimary : colors.textPrimary },
+          isChild && styles.childLabel // Add small margin for child text
+        ]}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -167,9 +172,9 @@ const styles = StyleSheet.create({
 
   // Special positioning for child icon - bring it down without affecting text
   childIconWrap: {
-    height: CARD_HEIGHT * 0.75,       // more balanced height
-    justifyContent: 'center',         // center alignment
-    paddingBottom: 16,                // proper gap from label (keep same)
+    height: CARD_HEIGHT * 0.78,       // match adult card height exactly
+    justifyContent: 'flex-end',       // push icon toward the label like adult card
+    paddingBottom: 2,                 // match adult card padding for consistent text alignment
     alignItems: 'center',
   },
 
@@ -203,6 +208,11 @@ const styles = StyleSheet.create({
   // Better contrast on red background
   labelSelected: {
     color: '#FFFFFF',
+  },
+
+  // Slightly lower positioning for child text to align with adult text
+  childLabel: {
+    paddingTop: 2, // Very small padding to fine-tune child text position
   },
 });
 

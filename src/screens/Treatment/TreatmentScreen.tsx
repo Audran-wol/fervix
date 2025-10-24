@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Animated, Easing,
-  TouchableOpacity, Dimensions, Platform, LayoutRectangle,
+  TouchableOpacity, Dimensions, Platform, LayoutRectangle, Image,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../theme/useTheme';
 import { useSessionStore } from '../../state';
 import { useSettingsStore } from '../../state/useSettingsStore';
+import { PowerController } from '../../state/power';
+import type { SampleEvent } from '../../state/power';
 import * as Haptics from 'expo-haptics';
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -28,19 +30,49 @@ export const TreatmentScreen: React.FC = () => {
   const [countdown, setCountdown] = useState(Math.floor(DURATION_MS / 1000)); // Start from 20 seconds
   const screenFill = useRef(new Animated.Value(0)).current;
   const [handLayout, setHandLayout] = useState<LayoutRectangle | null>(null);
-  const textColorAnimation = useRef(new Animated.Value(0)).current;
   const soundRef = useRef<Audio.Sound | null>(null);
   const lottieRef = useRef<LottieView>(null);
+  const [deviceDisconnected, setDeviceDisconnected] = useState(false);
 
   // === Sizing for treatment icon =============================================
   const CARD = Math.min(W, H) * 0.70;
   const ICON_SIZE = CARD * 0.85; // Treatment icon size - INCREASED
   // ===========================================================================
 
-  // ✅ SIMPLE SOLUTION: Play sound/vibration + navigate after 20 seconds
+  // ✅ Prevent back navigation during treatment phase
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        // Prevent back navigation during treatment
+        return true;
+      };
+
+      // Add back button listener
+      const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        // Prevent any navigation away from treatment screen
+        e.preventDefault();
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    }, [navigation])
+  );
+
+  // ✅ Device disconnect detection during treatment
   useEffect(() => {
-    console.log('[TreatmentScreen] 💚 Starting treatment phase...');
+    console.log('[TreatmentScreen] 💚 Starting treatment phase with device monitoring...');
     
+    // Subscribe to power events to detect device disconnect
+    const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
+      // Check if device is disconnected (charging state or very low current)
+      if (event.is_charging || (event.current_mA && Math.abs(event.current_mA) < 0.05)) {
+        console.log('[TreatmentScreen] ⚠️ Device disconnected during treatment - navigating to abort');
+        setDeviceDisconnected(true);
+        navigation.navigate('Aborted' as never);
+      }
+    });
+
     // Play sound if enabled
     if (soundOn) {
       (async () => {
@@ -50,11 +82,11 @@ export const TreatmentScreen: React.FC = () => {
             shouldDuckAndroid: true,
           });
           const { sound } = await Audio.Sound.createAsync(
-            require('../../assets/sound/treatment_loop_25s.wav'),
-            { shouldPlay: true, isLooping: true, volume: 1.0 }
+            require('../../assets/sound/ES_Windchimes, Zen, Relax, Calm, Peaceful, Isolated 01 - Epidemic Sound - 23044-35506.wav'),
+            { shouldPlay: true, isLooping: true, volume: 0.8 }
           );
           soundRef.current = sound;
-          console.log('[TreatmentScreen] 🔊 Playing treatment sound loop');
+          console.log('[TreatmentScreen] 🔊 Playing relaxing windchimes sound');
         } catch (e) {
           console.log('[TreatmentScreen] ❌ Sound error:', e);
         }
@@ -74,12 +106,14 @@ export const TreatmentScreen: React.FC = () => {
       console.log('[TreatmentScreen] 📳 Starting treatment vibration pattern');
     }
     
-    // Navigate after 20 seconds - skip cooling screen
+    // Navigate after 20 seconds (only if device still connected)
     const timer = setTimeout(() => {
-      console.log('[TreatmentScreen] ✅ 20 seconds passed - navigating to FinalCompleted (skipping cooling)');
-      soundRef.current?.stopAsync().catch(() => {});
-      if (vibrationInterval) clearInterval(vibrationInterval);
-      navigation.navigate('FinalCompleted' as never);
+      if (!deviceDisconnected) {
+        console.log('[TreatmentScreen] ✅ 20 seconds passed - navigating to FinalCompleted (skipping cooling)');
+        soundRef.current?.stopAsync().catch(() => {});
+        if (vibrationInterval) clearInterval(vibrationInterval);
+        navigation.navigate('FinalCompleted' as never);
+      }
     }, 20000); // 20 seconds
     
     return () => {
@@ -88,8 +122,9 @@ export const TreatmentScreen: React.FC = () => {
       soundRef.current?.stopAsync().then(() => {
         soundRef.current?.unloadAsync();
       }).catch(() => {});
+      unsub(); // Unsubscribe from power events
     };
-  }, [navigation, soundOn, vibrationOn]);
+  }, [navigation, soundOn, vibrationOn, deviceDisconnected]);
 
   // Update countdown from store's remainingMs
   useEffect(() => {
@@ -106,15 +141,6 @@ export const TreatmentScreen: React.FC = () => {
       useNativeDriver: false,
     }).start();
 
-    // Text color animation - changes instantly after 5 seconds
-    setTimeout(() => {
-      Animated.timing(textColorAnimation, {
-        toValue: 1,
-        duration: 100, // Very quick transition (almost instant)
-        easing: Easing.linear,
-        useNativeDriver: false,
-      }).start();
-    }, 6000);
 
     // Countdown timer - exact same logic as CoolingScreen
     const startedAt = Date.now();
@@ -201,6 +227,7 @@ export const TreatmentScreen: React.FC = () => {
       fontWeight: '700',
       textAlign: 'center',
       letterSpacing: -0.5,
+      color: colors.textPrimary,
     },
 
     countdown: {
@@ -213,7 +240,7 @@ export const TreatmentScreen: React.FC = () => {
     },
 
     titleWrap: { position: 'absolute', bottom: 160, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
-    title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+    title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', color: colors.textPrimary },
   });
 
   return (
@@ -227,7 +254,7 @@ export const TreatmentScreen: React.FC = () => {
           <View style={s.treatmentIconContainer}>
             <LottieView
               ref={lottieRef}
-              source={require('../../assets/lotties/treament.json')}
+              source={require('../../assets/lotties/anim_treatment.json')}
               style={s.treatmentIcon}
               autoPlay={true}
               loop={true}
@@ -241,35 +268,15 @@ export const TreatmentScreen: React.FC = () => {
       
       {/* Countdown Number Between Circle and Title */}
       <View style={s.countdownContainer}>
-        <Animated.Text 
-          style={[
-            s.countdownNumber,
-            {
-              color: textColorAnimation.interpolate({
-                inputRange: [0, 1],
-                outputRange: [colors.textPrimary, '#FFFFFF'],
-              }),
-            },
-          ]}
-        >
+        <Text style={s.countdownNumber}>
           {countdown}
-        </Animated.Text>
+        </Text>
       </View>
 
       <View style={s.titleWrap}>
-        <Animated.Text 
-          style={[
-            s.title,
-            {
-              color: textColorAnimation.interpolate({
-                inputRange: [0, 1],
-                outputRange: [colors.textPrimary, '#FFFFFF'],
-              }),
-            },
-          ]}
-        >
+        <Text style={s.title}>
           {t('treatment.active')}
-        </Animated.Text>
+        </Text>
       </View>
 
     </View>
