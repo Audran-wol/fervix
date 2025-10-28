@@ -28,6 +28,7 @@ export class PowerSimulator implements IPowerController {
   private detectorListeners: DetectorHandler[] = [];
   private phaseListeners: PhaseChangedHandler[] = [];
   private usbListeners: UsbHandler[] = [];
+  private recalibrationListeners: RecalibrationHandler[] = [];
   
   private traceIndex = 0;
   private trace: SampleEvent[] = [];
@@ -91,6 +92,7 @@ export class PowerSimulator implements IPowerController {
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
   subscribe(event: 'Usb', handler: UsbHandler): () => void;
+  subscribe(event: 'Recalibration', handler: RecalibrationHandler): () => void;
   subscribe(event: string, handler: any): () => void {
     if (event === 'Sample') {
       this.sampleListeners.push(handler);
@@ -111,6 +113,11 @@ export class PowerSimulator implements IPowerController {
       this.usbListeners.push(handler);
       return () => {
         this.usbListeners = this.usbListeners.filter(h => h !== handler);
+      };
+    } else if (event === 'Recalibration') {
+      this.recalibrationListeners.push(handler);
+      return () => {
+        this.recalibrationListeners = this.recalibrationListeners.filter(h => h !== handler);
       };
     }
     

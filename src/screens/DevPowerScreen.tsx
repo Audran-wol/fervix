@@ -16,7 +16,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { PowerController, USE_POWER_SIM } from '../state/power';
-import type { SampleEvent, Phase } from '../state/power';
+import type { SampleEvent, Phase, RecalibrationEvent } from '../state/power';
 import { useSessionStore } from '../state';
 import { useTheme } from '../theme/useTheme';
 
@@ -103,6 +103,18 @@ export const DevPowerScreen: React.FC = () => {
 
     PowerController.startSession({ presetId: profile });
     
+    // Subscribe to Recalibration events for periodic updates
+    const unsubRecalibration = PowerController.subscribe('Recalibration', (event: RecalibrationEvent) => {
+      console.log('[DevPowerScreen] 🔄 Recalibration event:', event);
+      if (event.type === 'PERIODIC_UPDATE') {
+        console.log(`[DevPowerScreen] 🔄 Periodic recalibration: baseline ${event.oldBaseline.toFixed(1)}mA → ${event.newBaseline.toFixed(1)}mA`);
+        console.log(`[DevPowerScreen] 🔄 Thresholds updated: start ${event.oldStartThreshold.toFixed(1)}mA → ${event.newStartThreshold.toFixed(1)}mA, end ${event.oldEndThreshold.toFixed(1)}mA → ${event.newEndThreshold.toFixed(1)}mA`);
+        
+        // Update local threshold state to reflect changes
+        setDeviceDetectionThreshold(event.newStartThreshold);
+      }
+    });
+
     const unsubSample = PowerController.subscribe('Sample', (event: SampleEvent) => {
       const cur = Number.isFinite(event.current_mA) ? event.current_mA : undefined;
       const incomingBaseline = Number.isFinite(event.baseline_current) ? event.baseline_current : undefined;
@@ -165,6 +177,7 @@ export const DevPowerScreen: React.FC = () => {
     return () => {
       unsubSample();
       unsubPhase();
+      unsubRecalibration();
       clearInterval(interval);
       PowerController.stopSession();
       if (calTimerRef.current) clearTimeout(calTimerRef.current);
@@ -297,11 +310,17 @@ export const DevPowerScreen: React.FC = () => {
   const saveCalibrationAndSuggestThreshold = () => {
     if (!drawAvg_mA) return;
     setCalSaved_mA(drawAvg_mA);
+    
+    // Calculate both thresholds based on measured device drainage
     const suggestedOn = Math.max(260, Math.round(drawAvg_mA - 50));
+    const suggestedOff = Math.round(suggestedOn * 0.5); // 50% hysteresis
+    
+    // Update both thresholds
     setDeviceDetectionThreshold(suggestedOn);
-    console.log(`[DevPowerScreen] Saved calibration = ${drawAvg_mA.toFixed(0)}mA; suggested TH_on=${suggestedOn}mA`);
-    // If you expose end-threshold on native, also do:
-    // PowerController.setDeviceDetectionEndThreshold?.(Math.round(suggestedOn * 0.5));
+    PowerController.setDeviceDetectionEndThreshold?.(suggestedOff);
+    
+    console.log(`[DevPowerScreen] Saved calibration = ${drawAvg_mA.toFixed(0)}mA`);
+    console.log(`[DevPowerScreen] Set TH_start=${suggestedOn}mA, TH_end=${suggestedOff}mA`);
   };
 
   // Styles

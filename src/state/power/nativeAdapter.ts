@@ -72,6 +72,7 @@ export class NativePowerAdapter implements IPowerController {
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
   subscribe(event: 'Usb', handler: UsbHandler): () => void;
+  subscribe(event: 'Recalibration', handler: RecalibrationHandler): () => void;
   subscribe(event: string, handler: any): () => void {
     console.log(`[NativePowerAdapter] === SUBSCRIBE DEBUG ===`);
     console.log(`[NativePowerAdapter] Event: ${event}`);
@@ -141,6 +142,54 @@ export class NativePowerAdapter implements IPowerController {
       })
       .catch((error: Error) => {
         console.error('[NativePowerAdapter] ❌ Failed to set threshold:', error);
+      });
+  }
+
+  setDeviceDetectionEndThreshold(threshold: number): void {
+    if (!FervixNativePower) {
+      console.error('[NativePowerAdapter] Native module not available for setDeviceDetectionEndThreshold');
+      return;
+    }
+    
+    console.log(`[NativePowerAdapter] Setting device detection END threshold to: ${threshold}mA`);
+    FervixNativePower.setDeviceDetectionEndThreshold(threshold)
+      .then(() => {
+        console.log(`[NativePowerAdapter] ✅ END threshold set successfully to ${threshold}mA`);
+      })
+      .catch((error: Error) => {
+        console.error('[NativePowerAdapter] ❌ Failed to set END threshold:', error);
+      });
+  }
+
+  enablePeriodicRecalibration(): void {
+    if (!FervixNativePower) {
+      console.error('[NativePowerAdapter] Native module not available for enablePeriodicRecalibration');
+      return;
+    }
+    
+    console.log('[NativePowerAdapter] Enabling periodic recalibration');
+    FervixNativePower.enablePeriodicRecalibration()
+      .then(() => {
+        console.log('[NativePowerAdapter] ✅ Periodic recalibration enabled');
+      })
+      .catch((error: Error) => {
+        console.error('[NativePowerAdapter] ❌ Failed to enable periodic recalibration:', error);
+      });
+  }
+
+  disablePeriodicRecalibration(): void {
+    if (!FervixNativePower) {
+      console.error('[NativePowerAdapter] Native module not available for disablePeriodicRecalibration');
+      return;
+    }
+    
+    console.log('[NativePowerAdapter] Disabling periodic recalibration');
+    FervixNativePower.disablePeriodicRecalibration()
+      .then(() => {
+        console.log('[NativePowerAdapter] ✅ Periodic recalibration disabled');
+      })
+      .catch((error: Error) => {
+        console.error('[NativePowerAdapter] ❌ Failed to disable periodic recalibration:', error);
       });
   }
 }

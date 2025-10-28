@@ -4,7 +4,7 @@
     "slug": "fervix-app",
     "version": "1.0.1",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
 
     "icon": "./assets/icon.png",
 
@@ -12,11 +12,23 @@
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
-        "backgroundColor": "#F7F6FA",
+        "backgroundColor": "#FFFFFF",
         "monochromeImage": "./assets/adaptive-icon-monochrome.png"
       },
       "package": "com.fervix.app",
-      "permissions": ["CAMERA"]
+      "permissions": ["CAMERA"],
+      "splash": {
+        "image": "./assets/icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
+      },
+      "theme": {
+        "splashScreenTheme": {
+          "image": "./assets/icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      }
     },
 
     "ios": { 
@@ -24,14 +36,30 @@
       "bundleIdentifier": "com.fervix.app",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to scan QR codes for device activation."
+      },
+      "splash": {
+        "image": "./assets/icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
       }
     },
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F7F6FA"
+      "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": ["**/*"],
-    "plugins": ["expo-font", "expo-asset"]
+    "plugins": [
+      "expo-font", 
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
+    ]
   }
 }

@@ -29,11 +29,11 @@ export const AbortedScreen: React.FC = () => {
             playThroughEarpieceAndroid: false,
           });
           const { sound } = await Audio.Sound.createAsync(
-            require('../../assets/sound/done_chime_1s.wav'),
-            { shouldPlay: true, isLooping: false, volume: 1.0 }
+            require('../../assets/sound/ES_Error Tone, Soft - Epidemic Sound.mp3'),
+            { shouldPlay: true, isLooping: false, volume: 0.8 }
           );
           soundRef.current = sound;
-          console.log('[AbortedScreen] 🔔 Playing error chime');
+          console.log('[AbortedScreen] 🔔 Playing error tone');
         }
         
         // Play vibration if enabled

@@ -33,6 +33,13 @@ export const TreatmentScreen: React.FC = () => {
   const soundRef = useRef<Audio.Sound | null>(null);
   const lottieRef = useRef<LottieView>(null);
   const [deviceDisconnected, setDeviceDisconnected] = useState(false);
+  
+  // Device disconnect detection refs with AGGRESSIVE settings for active phase
+  const disconnectDebounceRef = useRef<number | null>(null);
+  const lastCurrentRef = useRef<number | null>(null);
+  const DISCONNECT_DEBOUNCE_MS = 300; // FAST: 300ms debounce for critical treatment phase
+  const DISCONNECT_THRESHOLD = 0.05; // Very low current indicates disconnect
+  const IMMEDIATE_ABORT_THRESHOLD = 0.10; // For dramatic drops, abort immediately
 
   // === Sizing for treatment icon =============================================
   const CARD = Math.min(W, H) * 0.70;
@@ -63,16 +70,84 @@ export const TreatmentScreen: React.FC = () => {
   useEffect(() => {
     console.log('[TreatmentScreen] 💚 Starting treatment phase with device monitoring...');
     
-    // Subscribe to power events to detect device disconnect
-    const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
-      // Check if device is disconnected (charging state or very low current)
-      if (event.is_charging || (event.current_mA && Math.abs(event.current_mA) < 0.05)) {
-        console.log('[TreatmentScreen] ⚠️ Device disconnected during treatment - navigating to abort');
+    // Subscribe to PhaseChanged events for backend abort detection
+    const phaseUnsub = PowerController.subscribe('PhaseChanged', (event) => {
+      console.log('[TreatmentScreen] 📡 PhaseChanged event:', event);
+      if (event.phase === 'ABORT') {
+        console.log('[TreatmentScreen] 🚨 Backend detected abort - navigating to Aborted screen');
         setDeviceDisconnected(true);
         navigation.navigate('Aborted' as never);
       }
     });
-
+    
+    // Subscribe to power events to detect device disconnect
+    const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
+      // Skip if already disconnected
+      if (deviceDisconnected) return;
+      
+      const current = Number(event.current_mA);
+      const isCharging = event.is_charging;
+      
+      // CRITICAL: Immediate abort if charging detected (no debounce for charging state!)
+      if (isCharging && !deviceDisconnected) {
+        console.log('[TreatmentScreen] 🚨 IMMEDIATE ABORT: Phone is charging (device unplugged)');
+        setDeviceDisconnected(true);
+        navigation.navigate('Aborted' as never);
+        return; // Exit immediately, don't process further
+      }
+      
+      // AGGRESSIVE MULTI-CHECK for disconnect - Drastic changes from device baseline:
+      // 1. Current drops to very low levels (delta below threshold)
+      // 2. Current suddenly stops draining (goes from negative to positive/zero)
+      // 3. Drastic reduction in drain (>100mA sudden reduction) indicating device unplugged
+      const currentTooLow = Number.isFinite(current) && Math.abs(current) < DISCONNECT_THRESHOLD;
+      
+      const lastCurrent = lastCurrentRef.current;
+      const suddenDrop = lastCurrent !== null && 
+                        Number.isFinite(lastCurrent) && 
+                        Number.isFinite(current) &&
+                        lastCurrent < -0.1 && // Was draining significantly
+                        current > -0.05; // Now barely draining or charging
+      
+      // NEW: Drastic reduction in drain - device unplugged causes current to jump back
+      // Example: Was -0.3 (device draining), now -0.1 (device removed, less drain)
+      const drasticReduction = lastCurrent !== null &&
+                              Number.isFinite(lastCurrent) &&
+                              Number.isFinite(current) &&
+                              lastCurrent < -0.2 && // Was draining for device (>200mA)
+                              (current - lastCurrent) > IMMEDIATE_ABORT_THRESHOLD; // Sudden reduction >100mA
+      
+      lastCurrentRef.current = current;
+      
+      const isDisconnected = currentTooLow || suddenDrop || drasticReduction;
+      
+      console.log(`[TreatmentScreen] current=${current?.toFixed(3)}mA isCharging=${isCharging} ` +
+                  `currentTooLow=${currentTooLow} suddenDrop=${suddenDrop} ` +
+                  `drasticReduction=${drasticReduction} isDisconnected=${isDisconnected}`);
+      
+      if (isDisconnected) {
+        // Start debounce timer for disconnect
+        const now = Date.now();
+        if (disconnectDebounceRef.current === null) {
+          disconnectDebounceRef.current = now;
+          console.log('[TreatmentScreen] 🚨 Disconnect detected - starting debounce timer');
+        }
+        
+        // Check if debounce time has passed
+        if ((now - disconnectDebounceRef.current) >= DISCONNECT_DEBOUNCE_MS) {
+          console.log('[TreatmentScreen] ⚠️ Device disconnected during treatment - navigating to abort');
+          setDeviceDisconnected(true);
+          navigation.navigate('Aborted' as never);
+        }
+      } else {
+        // Device is connected (current is flowing), reset debounce
+        if (disconnectDebounceRef.current !== null) {
+          console.log('[TreatmentScreen] ✅ Device reconnected - resetting disconnect timer');
+          disconnectDebounceRef.current = null;
+        }
+      }
+    });
+    
     // Play sound if enabled
     if (soundOn) {
       (async () => {
@@ -110,8 +185,8 @@ export const TreatmentScreen: React.FC = () => {
     const timer = setTimeout(() => {
       if (!deviceDisconnected) {
         console.log('[TreatmentScreen] ✅ 20 seconds passed - navigating to FinalCompleted (skipping cooling)');
-        soundRef.current?.stopAsync().catch(() => {});
-        if (vibrationInterval) clearInterval(vibrationInterval);
+      soundRef.current?.stopAsync().catch(() => {});
+      if (vibrationInterval) clearInterval(vibrationInterval);
         navigation.navigate('FinalCompleted' as never);
       }
     }, 20000); // 20 seconds
@@ -123,6 +198,7 @@ export const TreatmentScreen: React.FC = () => {
         soundRef.current?.unloadAsync();
       }).catch(() => {});
       unsub(); // Unsubscribe from power events
+      phaseUnsub(); // Unsubscribe from phase events
     };
   }, [navigation, soundOn, vibrationOn, deviceDisconnected]);
 
@@ -264,13 +340,13 @@ export const TreatmentScreen: React.FC = () => {
           </View>
         </View>
         
-      </View>
-      
+          </View>
+          
       {/* Countdown Number Between Circle and Title */}
       <View style={s.countdownContainer}>
         <Text style={s.countdownNumber}>
-          {countdown}
-        </Text>
+            {countdown}
+          </Text>
       </View>
 
       <View style={s.titleWrap}>

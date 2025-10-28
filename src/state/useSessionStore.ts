@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import type { Phase, IPowerController, PhaseChangedEvent } from './power';
 
+// Debounce utility for profile switching
+let profileDebounceTimer: NodeJS.Timeout | null = null;
+const PROFILE_DEBOUNCE_DELAY = 300; // 300ms debounce for profile switching
+
 export interface TreatmentSession {
   id: string;
   startTime: Date;
@@ -101,7 +105,19 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   currentSession: null,
   sessionHistory: [],
 
-  setProfile: (profile) => set({ profile }),
+  setProfile: (profile) => {
+    // Update state immediately for UI responsiveness
+    set({ profile });
+    
+    // Debounce to prevent rapid switching
+    if (profileDebounceTimer) {
+      clearTimeout(profileDebounceTimer);
+    }
+    profileDebounceTimer = setTimeout(() => {
+      // Additional processing if needed after debounce
+      console.log(`[SessionStore] Profile switched to: ${profile}`);
+    }, PROFILE_DEBOUNCE_DELAY);
+  },
   setPhase: (phase) => set({ phase }),
 
   // Bind power controller and subscribe to phase changes (call once at app start)

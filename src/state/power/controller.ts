@@ -11,6 +11,7 @@ import type {
   DetectorHandler,
   PhaseChangedHandler,
   UsbHandler,
+  RecalibrationHandler,
 } from './contracts';
 
 // Feature flag - set to false to use native implementation
@@ -47,6 +48,7 @@ class PowerControllerSingleton implements IPowerController {
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
   subscribe(event: 'Usb', handler: UsbHandler): () => void;
+  subscribe(event: 'Recalibration', handler: RecalibrationHandler): () => void;
   subscribe(event: any, handler: any): () => void {
     return this.implementation.subscribe(event, handler);
   }
@@ -60,6 +62,30 @@ class PowerControllerSingleton implements IPowerController {
       (this.implementation as any).setDeviceDetectionThreshold(threshold);
     } else {
       console.warn('[PowerController] setDeviceDetectionThreshold not available in current implementation');
+    }
+  }
+
+  setDeviceDetectionEndThreshold(threshold: number): void {
+    if ('setDeviceDetectionEndThreshold' in this.implementation) {
+      (this.implementation as any).setDeviceDetectionEndThreshold(threshold);
+    } else {
+      console.warn('[PowerController] setDeviceDetectionEndThreshold not available in current implementation');
+    }
+  }
+
+  enablePeriodicRecalibration(): void {
+    if ('enablePeriodicRecalibration' in this.implementation) {
+      (this.implementation as any).enablePeriodicRecalibration();
+    } else {
+      console.warn('[PowerController] enablePeriodicRecalibration not available in current implementation');
+    }
+  }
+
+  disablePeriodicRecalibration(): void {
+    if ('disablePeriodicRecalibration' in this.implementation) {
+      (this.implementation as any).disablePeriodicRecalibration();
+    } else {
+      console.warn('[PowerController] disablePeriodicRecalibration not available in current implementation');
     }
   }
 }

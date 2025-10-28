@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -20,15 +20,17 @@ interface ProfileCardProps {
   onPress: () => void;
   style?: ViewStyle;
   isChild?: boolean; // Special prop for child card
+  disabled?: boolean; // Add disabled prop
 }
 
-export const ProfileCard: React.FC<ProfileCardProps> = ({
+export const ProfileCard: React.FC<ProfileCardProps> = memo(({
   label,
   iconSource,
   selected,
   onPress,
   style,
   isChild = false,
+  disabled = false,
 }) => {
   const { colors: themeColors, isDark } = useTheme();
   const scale = React.useRef(new Animated.Value(1)).current;
@@ -36,6 +38,8 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   const iconRotation = React.useRef(new Animated.Value(0)).current;
 
   const handlePress = () => {
+    if (disabled) return; // Don't handle press if disabled
+    
     if (Platform.OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -80,6 +84,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 8 },
       elevation: 6,
+      opacity: disabled ? 0.5 : 1.0, // Visual feedback for disabled state
     },
   });
 
@@ -87,10 +92,11 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     <Animated.View style={[{ transform: [{ scale }] }, style]}>
       <TouchableOpacity
         onPress={handlePress}
-        activeOpacity={0.85}
+        activeOpacity={disabled ? 1.0 : 0.85}
+        disabled={disabled}
         style={[dynamicStyles.card, selected && styles.cardSelected]}
         accessibilityRole="button"
-        accessibilityState={{ selected }}
+        accessibilityState={{ selected, disabled }}
         accessibilityLabel={`${label} profile`}
       >
         {/* BIGGER ICON, LOWER IN THE CARD */}
@@ -131,7 +137,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 // Slightly shorter cards than before
 const CARD_HEIGHT = 220;

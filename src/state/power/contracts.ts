@@ -45,6 +45,17 @@ export interface DetectorEvent {
   delta_mA: number;
 }
 
+export interface RecalibrationEvent {
+  type: 'PERIODIC_UPDATE' | 'MANUAL_UPDATE';
+  oldBaseline: number;
+  newBaseline: number;
+  oldStartThreshold: number;
+  newStartThreshold: number;
+  oldEndThreshold: number;
+  newEndThreshold: number;
+  timestamp: string;
+}
+
 export interface PhaseChangedEvent {
   phase: Phase;
   remainingMs?: number;
@@ -69,6 +80,7 @@ export type SampleHandler = (event: SampleEvent) => void;
 export type DetectorHandler = (event: DetectorEvent) => void;
 export type PhaseChangedHandler = (event: PhaseChangedEvent) => void;
 export type UsbHandler = (event: UsbEvent) => void;
+export type RecalibrationHandler = (event: RecalibrationEvent) => void;
 
 // Controller interface - the only API the app should use
 export interface IPowerController {
@@ -78,11 +90,16 @@ export interface IPowerController {
   subscribe(event: 'Detector', handler: DetectorHandler): () => void;
   subscribe(event: 'PhaseChanged', handler: PhaseChangedHandler): () => void;
   subscribe(event: 'Usb', handler: UsbHandler): () => void;
+  subscribe(event: 'Recalibration', handler: RecalibrationHandler): () => void;
   getSnapshot(): { 
     phase: Phase; 
     baseline_mA?: number; 
     lastDelta_mA?: number; 
   };
+  setDeviceDetectionThreshold?(threshold: number): void;
+  setDeviceDetectionEndThreshold?(threshold: number): void;
+  enablePeriodicRecalibration?(): void;
+  disablePeriodicRecalibration?(): void;
 }
 
 // Detector configuration constants

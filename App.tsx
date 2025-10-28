@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { StatusBar, View, ActivityIndicator } from 'react-native';
+import { StatusBar, View, ActivityIndicator, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { PowerController } from './src/state/power';
 import { useSessionStore } from './src/state';
 import { useActivationStore } from './src/state/useActivationStore';
 import { ActivationScreen } from './src/screens/Activation/ActivationScreen';
+import * as SplashScreen from 'expo-splash-screen';
 import './src/i18n'; // Initialize i18n
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const [isCheckingActivation, setIsCheckingActivation] = useState(true);
@@ -21,7 +25,6 @@ export default function App() {
     try {
       // Check if device is activated
       const activated = await checkActivation();
-      setIsCheckingActivation(false);
       
       // If activated, bind power controller and start monitoring
       if (activated) {
@@ -35,8 +38,14 @@ export default function App() {
       } else {
         console.log('[App] ❌ Device not activated. User needs to scan QR code.');
       }
+      
+      // Hide splash screen and show app
+      await SplashScreen.hideAsync();
+      setIsCheckingActivation(false);
     } catch (error) {
       console.error('[App] Error during initialization:', error);
+      // Hide splash screen even on error
+      await SplashScreen.hideAsync();
       setIsCheckingActivation(false);
     }
   };
@@ -48,8 +57,14 @@ export default function App() {
         flex: 1, 
         justifyContent: 'center', 
         alignItems: 'center', 
-        backgroundColor: '#F7F6FA' 
+        backgroundColor: '#FFFFFF' 
       }}>
+        <Text style={{
+          fontSize: 32,
+          fontWeight: 'bold',
+          color: '#E85A5A',
+          marginBottom: 20
+        }}>FERVIX®</Text>
         <ActivityIndicator size="large" color="#E85A5A" />
       </View>
     );

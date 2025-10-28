@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ interface SettingToggleRowProps {
   style?: ViewStyle;
 }
 
-export const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
+export const SettingToggleRow: React.FC<SettingToggleRowProps> = memo(({
   leftIcon,
   label,
   value,
@@ -180,5 +180,5 @@ export const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
       </TouchableOpacity>
     </View>
   );
-};
+});
 
