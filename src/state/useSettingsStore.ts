@@ -31,6 +31,10 @@ interface SettingsState {
   autoStart: boolean;
   setAutoStart: (enabled: boolean) => void;
 
+  // Manual detection mode (for testing/debugging)
+  manualDetectionMode: boolean;
+  setManualDetectionMode: (enabled: boolean) => void;
+
   // Reset all settings
   resetSettings: () => void;
 }
@@ -59,6 +63,7 @@ const defaultSettings = {
   vibrationOn: true,
   sensitive: false,
   autoStart: false,
+  manualDetectionMode: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -72,6 +77,7 @@ export const useSettingsStore = create<SettingsState>()(
       setVibrationOn: createDebouncedSetter((vibrationOn) => set({ vibrationOn })),
       setSensitive: createDebouncedSetter((sensitive) => set({ sensitive })),
       setAutoStart: (autoStart) => set({ autoStart }),
+      setManualDetectionMode: (manualDetectionMode) => set({ manualDetectionMode }),
 
       resetSettings: () => set(defaultSettings),
     }),

@@ -21,7 +21,7 @@ import { ProfileCard, SettingToggleRow, InfoCard } from '../../components/ui';
 import { useSessionStore } from '../../state/useSessionStore';
 import { useSettingsStore } from '../../state/useSettingsStore';
 import { PowerController } from '../../state/power';
-import type { SampleEvent } from '../../state/power';
+import type { DetectorEvent } from '../../state/power';
 import * as Haptics from 'expo-haptics';
 
 export const HomeScreen: React.FC = React.memo(() => {
@@ -31,57 +31,28 @@ export const HomeScreen: React.FC = React.memo(() => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const { profile, setProfile } = useSessionStore();
-  const { sensitive, setSensitive, soundOn, vibrationOn } = useSettingsStore();
+  const { sensitive, setSensitive, soundOn, vibrationOn, manualDetectionMode } = useSettingsStore();
   const [showDeviceImage, setShowDeviceImage] = useState(false);
-  const [deviceConnected, setDeviceConnected] = useState(false);
-  const [deviceDetectionThreshold, setDeviceDetectionThreshold] = useState<number>(0.20);
   const [coolingCountdown, setCoolingCountdown] = useState<number | null>(null);
   const [isCoolingDown, setIsCoolingDown] = useState(false);
-  const [devicePhase, setDevicePhase] = useState<'idle' | 'connected' | 'gently_press' | 'pressed' | 'starting'>('idle');
+  const [devicePhase, setDevicePhase] = useState<'idle' | 'pressed' | 'starting'>('idle');
   const scrollViewRef = useRef<ScrollView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
-  const gentlyPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pressDetectionTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Two-stage detection: plugged in + pressed against skin
-  const [devicePluggedIn, setDevicePluggedIn] = useState(false);
-  const [devicePressed, setDevicePressed] = useState(false);
-  const [baselineCurrent, setBaselineCurrent] = useState<number | null>(null);
-  const [pluggedInCurrent, setPluggedInCurrent] = useState<number | null>(null);
-
-  // Refs to hold latest values for use in subscriber callbacks
-  const thresholdRef = useRef(deviceDetectionThreshold);
-  const connectedRef = useRef(false);
-  const navigationStartedRef = useRef(false);
-  const devicePhaseRef = useRef<'idle' | 'connected' | 'gently_press' | 'pressed' | 'starting'>('idle');
+  // Device detection state (managed by TypeScript detector)
+  const [deviceDetected, setDeviceDetected] = useState(false);
   
-  // Debounce refs for sustained detection - CRITICAL: Long debounce prevents false positives
-  const startDebounceRef = useRef<number | null>(null);
-  const START_DEBOUNCE_MS = 2000; // 2 seconds - must sustain drain to confirm real device
+  // Refs for UI state management
+  const navigationStartedRef = useRef(false);
+  const devicePhaseRef = useRef<'idle' | 'pressed' | 'starting'>('idle');
 
-  // USB attach prime (JS-side window in case OEM doesn't send attach_window_active each sample)
-  const usbPrimeUntilRef = useRef<number>(0);
-  const USB_PRIME_MS = 3000;
-
-  // thresholds - CRITICAL: Must be high enough to avoid false positives from normal phone fluctuations
-  const INSIDE_WINDOW_THR = 0.15; // 150mA - only after USB event (your "UI mA" units)
-  const OUTSIDE_WINDOW_THR = 0.30; // 300mA - strict to prevent false detections without USB event
-
-  // Keep threshold ref fresh + sync native
+  // Reset detection state on mount
   useEffect(() => {
-    thresholdRef.current = deviceDetectionThreshold;                 // always latest for subscriber
-    PowerController.setDeviceDetectionThreshold(deviceDetectionThreshold); // keep native in sync
-    console.log(`[HomeScreen] Threshold updated to: ${deviceDetectionThreshold}mA`);
-  }, [deviceDetectionThreshold]);
-
-  // ✅ Fix #5: Align native threshold on mount
-  useEffect(() => {
-    const TEST_THRESHOLD = 0.20;
-    setDeviceDetectionThreshold(TEST_THRESHOLD);
-    PowerController.setDeviceDetectionThreshold(TEST_THRESHOLD);
-    // Reset navigation flag on mount
     navigationStartedRef.current = false;
-    console.log(`[HomeScreen] Applied test threshold: ${TEST_THRESHOLD}`);
+    setDeviceDetected(false);
+    setDevicePhase('idle');
+    devicePhaseRef.current = 'idle';
   }, []);
 
   // ✅ Start cooling countdown only when coming from treatment completion
@@ -90,10 +61,9 @@ export const HomeScreen: React.FC = React.memo(() => {
     const route = navigation.getState()?.routes?.find(r => r.name === 'MainTabs');
     const params = route?.params as any;
     
-    if (params?.fromTreatmentCompletion) {
-      setCoolingCountdown(12);
-      setIsCoolingDown(true);
-      console.log('[HomeScreen] 🧊 Starting cooling countdown: 12 seconds');
+      if (params?.fromTreatmentCompletion) {
+        setCoolingCountdown(12);
+        setIsCoolingDown(true);
       
       // Clear the parameter to prevent restarting on subsequent focuses
       navigation.setParams({ fromTreatmentCompletion: undefined } as any);
@@ -106,7 +76,6 @@ export const HomeScreen: React.FC = React.memo(() => {
     if ((window as any).shouldStartCooling) {
       setCoolingCountdown(12);
       setIsCoolingDown(true);
-      console.log('[HomeScreen] 🧊 Starting cooling countdown: 12 seconds');
       (window as any).shouldStartCooling = false; // Clear the flag
     }
   }, [isFocused]);
@@ -122,43 +91,9 @@ export const HomeScreen: React.FC = React.memo(() => {
       // Countdown finished
       setCoolingCountdown(null);
       setIsCoolingDown(false);
-      console.log('[HomeScreen] ✅ Cooling countdown finished');
     }
   }, [coolingCountdown]);
 
-  // Method to update threshold from external source (like DevPowerScreen)
-  const updateThreshold = (newThreshold: number) => {
-    console.log(`[HomeScreen] Updating threshold to: ${newThreshold}mA`);
-    setDeviceDetectionThreshold(newThreshold);
-  };
-
-  // Expose updateThreshold method globally for DevPowerScreen to use
-  useEffect(() => {
-    (window as any).updateHomeScreenThreshold = updateThreshold;
-    
-    // Try to sync with DevPowerScreen threshold if it's already set
-    if ((window as any).getDevPowerScreenThreshold) {
-      const devThreshold = (window as any).getDevPowerScreenThreshold();
-      if (devThreshold !== deviceDetectionThreshold) {
-        console.log(`[HomeScreen] Syncing with DevPowerScreen threshold: ${devThreshold}mA`);
-        setDeviceDetectionThreshold(devThreshold);
-      }
-    }
-    
-    return () => {
-      delete (window as any).updateHomeScreenThreshold;
-    };
-  }, []);
-
-  // PM-recommended detection: direction-agnostic delta magnitude
-  const isDetected = (current: number, baseline: number, threshold: number) => {
-    if (!Number.isFinite(current) || !Number.isFinite(baseline) || !Number.isFinite(threshold)) {
-      return false;
-    }
-    // Direction-agnostic: delta magnitude (always positive)
-    const deltaMag = Math.abs(current - baseline);
-    return deltaMag >= Math.abs(threshold);
-  };
 
   // Optimized callback handlers to prevent unnecessary re-renders
   const handleChildProfilePress = useCallback(() => {
@@ -342,7 +277,7 @@ export const HomeScreen: React.FC = React.memo(() => {
         );
         soundRef.current = sound;
       } catch (e) {
-        console.log('[HomeScreen] Audio init error', e);
+        // Audio init error - silent fail
       }
     })();
     return () => {
@@ -356,15 +291,13 @@ export const HomeScreen: React.FC = React.memo(() => {
         const s = soundRef.current;
         if (!s) return;
         await s.replayAsync(); // ensures play from start
-        console.log('[HomeScreen] 🔊 Playing detection sound');
       }
       
       if (vibrationOn) {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        console.log('[HomeScreen] 📳 Playing detection vibration');
       }
     } catch (e) {
-      console.log('[HomeScreen] Sound/vibration error', e);
+      // Sound/vibration error - silent fail
     }
   };
 
@@ -391,230 +324,98 @@ export const HomeScreen: React.FC = React.memo(() => {
 
       // ✅ HomeScreen detection - only when Home is focused
       useEffect(() => {
-        if (!isFocused) return; // only run when Home is visible
-        if (isCoolingDown) return; // no detection during cooling
-
-        console.log('[HomeScreen] 👀 Focus detected - starting session + subscribing to power events');
+        if (!isFocused) return;
         
-        // ✅ CRITICAL: Ensure PowerController is bound first
+        // CRITICAL: Block ALL detection subscriptions during cooldown
+        if (isCoolingDown || coolingCountdown !== null) {
+          console.log('[HomeScreen] ⛔ Detection subscriptions blocked - cooldown active');
+          return;
+        }
+
         const store = useSessionStore.getState();
         store.bindPowerController(PowerController);
         
+        // 1. Reset Phase to IDLE to ensure Detector is ready
+        PowerController.subscribe('PhaseChanged', () => {}); 
+        
         // Start the power monitoring session
-        store.requestStart({ presetId: profile });
-        console.log('[HomeScreen] ✅ Power monitoring session started');
+        const currentProfile = store.profile;
+        store.requestStart({ presetId: currentProfile });
 
-        const unsub = PowerController.subscribe('Sample', (event: SampleEvent) => {
-          if (event.is_charging) {
-            startDebounceRef.current = null;
-            if (connectedRef.current) {
-              connectedRef.current = false;
-              setDeviceConnected(false);
-              setShowDeviceImage(false);
-              setDevicePhase('idle');
-              setDevicePluggedIn(false);
-              setDevicePressed(false);
-              setBaselineCurrent(null);
-              setPluggedInCurrent(null);
-              deviceImagePulse.setValue(0);
-              
-              // Clear the timers
-              if (gentlyPressTimerRef.current) {
-                clearTimeout(gentlyPressTimerRef.current);
-                gentlyPressTimerRef.current = null;
-              }
-              if (pressDetectionTimerRef.current) {
-                clearTimeout(pressDetectionTimerRef.current);
-                pressDetectionTimerRef.current = null;
-              }
-            }
+        // 2. Subscribe to the new Detector Logic
+        const unsubDetector = PowerController.subscribe('Detector', (event: DetectorEvent) => {
+          // CRITICAL: Block detection during cooldown
+          if (isCoolingDown || coolingCountdown !== null) {
+            console.log('[HomeScreen] ⛔ Ignoring detection - cooldown active', { isCoolingDown, coolingCountdown });
             return;
           }
-
-          // ✅ Require native calibration to be complete
-          if ((event as any)?.calibration_complete === false) {
-            // keep adapting baseline etc., but don't arm debounce or fire UI
-            startDebounceRef.current = null;
-            return;
-          }
-
-          const cur  = Number(event.current_mA);
-          const base = Number(event.baseline_current);
-
-          // prefer native delta if present; else compute
-          let deltaMag = Number.isFinite((event as any).delta_mA)
-            ? Math.abs(Number((event as any).delta_mA))
-            : (Number.isFinite(cur) && Number.isFinite(base) ? Math.abs(cur - base) : NaN);
-          if (!Number.isFinite(deltaMag)) return;
-
-          // Are we inside the attach window?
-          const nativeAttach = !!(event as any).attach_window_active;
-          const jsAttach = Date.now() < usbPrimeUntilRef.current;
-          const inAttachWindow = nativeAttach || jsAttach;
-
-          // Effective threshold
-          const thr = inAttachWindow ? INSIDE_WINDOW_THR : OUTSIDE_WINDOW_THR;
-
-          const detectedNow = deltaMag >= thr;
-
-          // Debounce
-          const now = Date.now();
-          if (detectedNow) {
-            if (startDebounceRef.current === null) startDebounceRef.current = now;
-          } else {
-            startDebounceRef.current = null;
-          }
-          const debouncedDetected =
-            detectedNow &&
-            startDebounceRef.current !== null &&
-            (now - startDebounceRef.current) >= START_DEBOUNCE_MS;
-
-          // DETAILED DEBUG LOGGING for troubleshooting false positives
-          if (detectedNow || debouncedDetected) {
-            console.log(`[HomeScreen] 🔍 DETECTION CHECK: cur=${cur?.toFixed(3)} base=${base?.toFixed(3)} |Δ|=${deltaMag.toFixed(3)} thr=${thr} inAttach=${inAttachWindow} detected=${detectedNow} debounced=${debouncedDetected} calibrated=${event.calibration_complete}`);
-          }
-
-          // ✅ TWO-STAGE DETECTION: Stage 1 - Initial Device Detection
-          // CRITICAL: Must meet ALL conditions to prevent false positives:
-          // 1. Sustained drain above threshold (debounced for 2 seconds)
-          // 2. Inside attach window (USB event detected within last 3 seconds)
-          // 3. Not already connected
-          if (debouncedDetected && inAttachWindow && !connectedRef.current) {
-            connectedRef.current = true;
-            setDevicePluggedIn(true);
-            setDeviceConnected(true);
-            setShowDeviceImage(false);
-            setDevicePhase('connected');
-            devicePhaseRef.current = 'connected'; // Keep ref in sync
-            
-            // Store the current at device detection as reference for stage 2
-            setPluggedInCurrent(cur);
-
-            // Play detection sound
-            playDetectedSound();
-
-            console.log(`[HomeScreen] 🔌 STAGE 1: Device detected at ${cur.toFixed(1)}mA (delta: ${deltaMag.toFixed(1)}mA from baseline ${base.toFixed(1)}mA)`);
-            
-            // Clear any existing timer
-            if (gentlyPressTimerRef.current) {
-              clearTimeout(gentlyPressTimerRef.current);
-            }
-            
-            // Show "Device Connected" for 1 second, then IMMEDIATELY show "Gently press" and STAY there
-            gentlyPressTimerRef.current = setTimeout(() => {
-              setShowDeviceImage(true);
-              setDevicePhase('gently_press');
-              devicePhaseRef.current = 'gently_press'; // Keep ref in sync
-              navigationStartedRef.current = true; // CRITICAL: Prevent cleanup from resetting state
-              console.log('[HomeScreen] 📱 STAGE 1 COMPLETE: Now showing "Gently press device on skin" and WAITING FOR STAGE 2 (press to start)...');
+          
+          // START EVENT
+          if (event.type === 'START_HEAT') {
+              // Prevent double-trigger if we are already transitioning
+              if (devicePhaseRef.current === 'pressed' || devicePhaseRef.current === 'starting') {
+                console.log('[Home] ⛔ Ignoring duplicate START_HEAT - already transitioning');
+                return;
+              }
               
-              // Now we WAIT indefinitely for STAGE 2 - Additional drainage when user presses start button
-              // This will be detected in the ongoing Sample subscription below
-            }, 1000); // 1 second for "Device Connected" then show "Gently press" IMMEDIATELY
+              // CRITICAL: Verify backend phase is still IDLE before navigating
+              const currentStore = useSessionStore.getState();
+              const backendPhase = currentStore.backendPhase;
+              if (backendPhase !== 'IDLE' && backendPhase !== 'PREHEAT_DETECT') {
+                console.log('[Home] ⛔ Ignoring START_HEAT - backend phase is', backendPhase);
+                return;
+              }
+              
+              console.log('[Home] Device Connected -> Starting Sequence');
+            
+              // Immediate UI Feedback
+              playDetectedSound();
+            setDeviceDetected(true);
+            setDevicePhase('pressed');
+            devicePhaseRef.current = 'pressed';
+            
+              // Short delay for the "Pulse" animation, then Navigate
+              // We do NOT check for Abort inside this specific timeout to prevent UI flickering
+              setTimeout(() => {
+                // Double-check phase before navigating (prevent navigation if phase changed)
+                const finalCheck = useSessionStore.getState().backendPhase;
+                if (finalCheck === 'IDLE' || finalCheck === 'PREHEAT_DETECT') {
+                  navigation.navigate('Heating' as never);
+                } else {
+                  console.log('[Home] ⛔ Navigation cancelled - phase changed to', finalCheck);
+                  setDeviceDetected(false);
+                  setDevicePhase('idle');
+                  devicePhaseRef.current = 'idle';
+                }
+              }, 800);
           }
 
-          // ✅ TWO-STAGE DETECTION: Stage 2 - Press Detection (Additional -200mA or more drainage)
-          // Only check for press if we're in the "gently_press" phase (waiting for user to press device on skin)
-          // Use devicePhaseRef.current to avoid stale closure issues
-          if (devicePhaseRef.current === 'gently_press' && !devicePressed && pluggedInCurrent !== null) {
-            // Calculate the absolute current drainage from plugged-in state
-            // cur is negative when draining (e.g., -0.3 means draining 300mA in UI units)
-            // We want to detect when current becomes MORE negative (more drainage)
-            const currentDrainage = Math.abs(cur); // Convert to positive for easier comparison
-            const initialDrainage = Math.abs(pluggedInCurrent);
-            const additionalDrainage = currentDrainage - initialDrainage;
-            
-            // Threshold: 0.20 = 200mA additional drainage in UI units (user specified -200 to -300mA+)
-            const PRESS_DRAINAGE_THRESHOLD = 0.20; // 200mA additional drainage in UI units
-            
-            console.log(`[HomeScreen] 👆 STAGE 2 CHECK: Current: ${cur.toFixed(3)} (${(currentDrainage * 1000).toFixed(1)}mA drainage), Initial: ${pluggedInCurrent.toFixed(3)} (${(initialDrainage * 1000).toFixed(1)}mA drainage), Additional: ${(additionalDrainage * 1000).toFixed(1)}mA, Threshold: ${(PRESS_DRAINAGE_THRESHOLD * 1000).toFixed(0)}mA`);
-            
-            // Detect when additional drainage exceeds threshold (e.g., from -0.02 to -0.22 = 0.20 = 200mA additional)
-            if (additionalDrainage >= PRESS_DRAINAGE_THRESHOLD) {
-              setDevicePressed(true);
-              setDevicePhase('pressed');
-              devicePhaseRef.current = 'pressed'; // Keep ref in sync
-              
-              console.log(`[HomeScreen] ✋ STAGE 2 COMPLETE: Press detected! Additional drainage: ${(additionalDrainage * 1000).toFixed(1)}mA (from ${(initialDrainage * 1000).toFixed(1)}mA to ${(currentDrainage * 1000).toFixed(1)}mA). Starting workflow in 2 seconds...`);
-              
-              // Navigate to Heating screen after 2 seconds
-              pressDetectionTimerRef.current = setTimeout(() => {
-                setDevicePhase('starting');
-                devicePhaseRef.current = 'starting'; // Keep ref in sync
-                console.log('[HomeScreen] ✅ Starting workflow - Navigating to Heating screen');
-                navigation.navigate('Heating' as never);
-              }, 2000);
-            }
-          }
-
-          // If it dips below threshold before debounce or after, clean up
-          // BUT NOT if navigation has already started OR if we're in any connected phase
-          // CRITICAL: Use devicePhaseRef.current instead of devicePhase state to avoid stale closure issues!
-          const currentPhase = devicePhaseRef.current;
-          if (!detectedNow && connectedRef.current && startDebounceRef.current === null && !navigationStartedRef.current && 
-              currentPhase !== 'connected' && currentPhase !== 'gently_press' && currentPhase !== 'pressed' && currentPhase !== 'starting') {
-            console.log('[HomeScreen] 🧹 CLEANUP: Device disconnected, resetting state');
-            connectedRef.current = false;
-            setDeviceConnected(false);
-            setShowDeviceImage(false);
+          // ABORT EVENT (Only if we are still on Home/Pressed state)
+          if (event.type === 'END_HEAT') {
+              if (devicePhaseRef.current !== 'idle') {
+                  console.log('[Home] Device Disconnected (Button Released)');
+            setDeviceDetected(false);
             setDevicePhase('idle');
-            devicePhaseRef.current = 'idle'; // Keep ref in sync
-            setDevicePluggedIn(false);
-            setDevicePressed(false);
-            setBaselineCurrent(null);
-            setPluggedInCurrent(null);
-            deviceImagePulse.setValue(0);
+            devicePhaseRef.current = 'idle';
             
-            // Clear the timers
-            if (gentlyPressTimerRef.current) {
-              clearTimeout(gentlyPressTimerRef.current);
-              gentlyPressTimerRef.current = null;
-            }
+            // Clear timers
             if (pressDetectionTimerRef.current) {
               clearTimeout(pressDetectionTimerRef.current);
               pressDetectionTimerRef.current = null;
+                  }
             }
           }
         });
 
-        // Subscribe to USB events for faster detection
-        const unsubUsb = PowerController.subscribe('Usb', (e: any) => {
-          if (
-            e?.type === 'USB_PORT_CHANGED' ||
-            e?.type === 'USB_DEVICE_ATTACHED' ||
-            e?.type === 'USB_STATE'
-          ) {
-            usbPrimeUntilRef.current = Date.now() + USB_PRIME_MS;
-            if (startDebounceRef.current === null) startDebounceRef.current = Date.now();
-            console.log('[HomeScreen] 🚦 USB event — opened JS attach window for 3s & primed debounce');
-          }
-        });
-
-        // focus/cleanup
         return () => {
-          console.log('[HomeScreen] cleanup: unsubscribe only (session continues for workflow)');
-          unsub();
-          unsubUsb();
-          // Reset navigation flag for next time
-          navigationStartedRef.current = false;
-          // Clear all timers
-          if (gentlyPressTimerRef.current) {
-            clearTimeout(gentlyPressTimerRef.current);
-            gentlyPressTimerRef.current = null;
-          }
+          unsubDetector();
+          // Clear timers
           if (pressDetectionTimerRef.current) {
             clearTimeout(pressDetectionTimerRef.current);
             pressDetectionTimerRef.current = null;
           }
-          // Reset two-stage detection states
-          setDevicePluggedIn(false);
-          setDevicePressed(false);
-          setBaselineCurrent(null);
-          setPluggedInCurrent(null);
-          // DON'T stop session here - it needs to continue through Heating/Treatment/Cooling/Done phases
-          // PowerController.stopSession();
         };
-      }, [isFocused, profile, navigation, isCoolingDown]);   // ⬅️ IMPORTANT: no deviceConnected here
+      }, [isFocused, navigation, isCoolingDown, coolingCountdown]);
 
   // ✅ No longer using PhaseChanged for navigation - using timers for reliability
 
@@ -644,7 +445,6 @@ export const HomeScreen: React.FC = React.memo(() => {
 
     // ✅ Session should already be running from the focus effect
     // Just wait for PhaseChanged to navigate
-    console.log('[HomeScreen] Manual trigger - waiting for PhaseChanged: HEATUP');
   };
 
   return (
@@ -705,22 +505,56 @@ export const HomeScreen: React.FC = React.memo(() => {
         </View>
 
 
-        {/* Insert Device Banner - Informational Only */}
-        <View style={[
-          styles.insertDeviceBanner,
-          devicePhase === 'connected' && styles.insertDeviceBannerConnected
-        ]}>
+        {/* Insert Device Banner - Clickable when manual detection mode is enabled */}
+        {manualDetectionMode && devicePhase === 'idle' && !isCoolingDown && coolingCountdown === null ? (
+          <TouchableOpacity
+            style={[
+              styles.insertDeviceBanner,
+              devicePhase === 'pressed' && styles.insertDeviceBannerConnected
+            ]}
+            onPress={() => {
+              // Double-check cooldown before triggering
+              if (isCoolingDown || coolingCountdown !== null) {
+                console.log('[HomeScreen] ⛔ Manual detection blocked - cooldown active', { isCoolingDown, coolingCountdown });
+                return;
+              }
+              
+              // Additional check: Verify backend phase is IDLE
+              const currentStore = useSessionStore.getState();
+              const backendPhase = currentStore.backendPhase;
+              if (backendPhase !== 'IDLE' && backendPhase !== 'PREHEAT_DETECT') {
+                console.log('[HomeScreen] ⛔ Manual detection blocked - active phase:', backendPhase);
+                return;
+              }
+              
+              console.log('[HomeScreen] 🔧 Manual detection disabled - using automatic detection only');
+            }}
+            activeOpacity={0.7}
+          >
             <Text style={[
               styles.insertDeviceText,
-              (devicePhase === 'gently_press' || devicePhase === 'pressed') && styles.insertDeviceTextGently
+              devicePhase === 'pressed' && styles.insertDeviceTextGently
+            ]}>
+              {t('start.insertDevice')}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[
+            styles.insertDeviceBanner,
+            devicePhase === 'pressed' && styles.insertDeviceBannerConnected,
+            isCoolingDown && { opacity: 0.6 } // Visual indication that it's disabled
+          ]}>
+            <Text style={[
+              styles.insertDeviceText,
+              devicePhase === 'pressed' && styles.insertDeviceTextGently,
+              isCoolingDown && { color: colors.textMuted }
             ]}>
               {coolingCountdown !== null ? `${t('start.coolingDown')} ${coolingCountdown}s` :
-               devicePhase === 'connected' ? 'Device Connected' : 
-               devicePhase === 'gently_press' ? t('start.gentlyPress') : 
                devicePhase === 'pressed' ? 'Press Detected - Starting...' :
                t('start.insertDevice')}
             </Text>
-        </View>
+          </View>
+        )}
 
         {/* Device Image Display - Temporarily commented out */}
         {/* {showDeviceImage && (

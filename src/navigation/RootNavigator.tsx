@@ -19,7 +19,6 @@ import FinalCompletedScreen from '../screens/FinalCompleted/FinalCompletedScreen
 import AbortedScreen from '../screens/Aborted/AbortedScreen';
 import LanguagePickerScreen from '../screens/LanguagePicker/LanguagePickerScreen';
 import QRCodeScreen from '../screens/QRCode/QRCodeScreen';
-import DevPowerScreen from '../screens/DevPowerScreen';
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -30,7 +29,6 @@ export type RootStackParamList = {
   Aborted: undefined;
   LanguagePicker: undefined;
   QRCode: undefined;
-  DevPower: undefined;
 };
 
 export type MainTabParamList = {
@@ -151,7 +149,6 @@ export const RootNavigator = () => {
         <Stack.Screen name="Aborted" component={AbortedScreen} />
         <Stack.Screen name="LanguagePicker" component={LanguagePickerScreen} />
         <Stack.Screen name="QRCode" component={QRCodeScreen} />
-        <Stack.Screen name="DevPower" component={DevPowerScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

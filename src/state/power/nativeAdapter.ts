@@ -1,9 +1,11 @@
 /**
  * Native Power Adapter
  * Bridges React Native native module to IPowerController interface
+ * Processes raw samples through TypeScript detector for variance-based detection
  */
 
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import { CurrentDetector } from './detector';
 import type {
   IPowerController,
   Phase,
@@ -11,6 +13,9 @@ import type {
   DetectorHandler,
   PhaseChangedHandler,
   UsbHandler,
+  RecalibrationHandler,
+  SampleEvent,
+  DetectorEvent,
 } from './contracts';
 
 const LINKING_ERROR =
@@ -28,24 +33,59 @@ const eventEmitter = FervixNativePower ? new NativeEventEmitter(FervixNativePowe
 /**
  * Native implementation of IPowerController
  * Forwards calls to Android native module and subscribes to native events
+ * Processes raw samples through TypeScript detector
  */
 export class NativePowerAdapter implements IPowerController {
   private subscriptions: Map<string, any> = new Map();
+  private detector: CurrentDetector;
+  private sampleListeners: SampleHandler[] = [];
+  private detectorListeners: DetectorHandler[] = [];
+
+  constructor() {
+    this.detector = new CurrentDetector();
+    
+    // Subscribe to detector events and forward them
+    this.detector.subscribe((event: DetectorEvent) => {
+      this.emitDetectorEvent(event);
+      
+      // Trigger native HEATUP phase when START_HEAT is detected
+      if (event.type === 'START_HEAT' && FervixNativePower) {
+        if (__DEV__) {
+          console.log('[NativePowerAdapter] 🔥 START_HEAT detected - triggering native HEATUP phase');
+        }
+        FervixNativePower.triggerHeatupPhase()
+          .then(() => {
+            if (__DEV__) {
+              console.log('[NativePowerAdapter] ✅ Native HEATUP phase triggered successfully');
+            }
+          })
+          .catch((error: Error) => {
+            console.error('[NativePowerAdapter] ❌ Failed to trigger HEATUP phase:', error);
+          });
+      }
+    });
+  }
 
   startSession(params: { presetId: string; ambientC?: number }): void {
-    console.log('[NativePowerAdapter] === START SESSION DEBUG ===');
-    console.log('[NativePowerAdapter] Params:', params);
-    console.log('[NativePowerAdapter] FervixNativePower available:', !!FervixNativePower);
+    if (__DEV__) {
+      console.log('[NativePowerAdapter] Starting session with params:', params);
+    }
     
     if (!FervixNativePower) {
       console.error('[NativePowerAdapter] Native module not available:', LINKING_ERROR);
       return;
     }
     
-    console.log('[NativePowerAdapter] Calling native startSession...');
+    // Reset detector for new session
+    this.detector.reset();
+    // CRITICAL: Force phase to IDLE when starting session (ensures detection works on HomeScreen)
+    this.detector.setPhase('IDLE');
+    
     FervixNativePower.startSession(params)
       .then(() => {
-        console.log('[NativePowerAdapter] ✅ Session started successfully');
+        if (__DEV__) {
+          console.log('[NativePowerAdapter] ✅ Session started successfully');
+        }
       })
       .catch((error: Error) => {
         console.error('[NativePowerAdapter] ❌ Failed to start session:', error);
@@ -58,10 +98,11 @@ export class NativePowerAdapter implements IPowerController {
       return;
     }
     
-    console.log('[NativePowerAdapter] Stopping session');
     FervixNativePower.stopSession()
       .then(() => {
-        console.log('[NativePowerAdapter] Session stopped successfully');
+        if (__DEV__) {
+          console.log('[NativePowerAdapter] Session stopped successfully');
+        }
       })
       .catch((error: Error) => {
         console.error('[NativePowerAdapter] Failed to stop session:', error);
@@ -74,31 +115,83 @@ export class NativePowerAdapter implements IPowerController {
   subscribe(event: 'Usb', handler: UsbHandler): () => void;
   subscribe(event: 'Recalibration', handler: RecalibrationHandler): () => void;
   subscribe(event: string, handler: any): () => void {
-    console.log(`[NativePowerAdapter] === SUBSCRIBE DEBUG ===`);
-    console.log(`[NativePowerAdapter] Event: ${event}`);
-    console.log(`[NativePowerAdapter] FervixNativePower available: ${!!FervixNativePower}`);
-    console.log(`[NativePowerAdapter] EventEmitter available: ${!!eventEmitter}`);
-    
+    // Handle PhaseChanged events - update detector phase to disable detection during active phases
+    if (event === 'PhaseChanged') {
+      const subscription = eventEmitter?.addListener('PhaseChanged', (data: { phase: Phase }) => {
+        // Update detector phase to disable detection during active phases
+        this.detector.setPhase(data.phase);
+        handler(data);
+      });
+      const key = `PhaseChanged-${Date.now()}`;
+      this.subscriptions.set(key, subscription);
+      return () => {
+        subscription?.remove();
+        this.subscriptions.delete(key);
+      };
+    }
     if (!FervixNativePower || !eventEmitter) {
       console.error('[NativePowerAdapter] Native module not available for subscription');
       return () => {}; // Return empty unsubscribe function
     }
     
-    console.log(`[NativePowerAdapter] Creating subscription for ${event}`);
+    // Handle Sample events - process through detector
+    if (event === 'Sample') {
+      this.sampleListeners.push(handler);
+      
+      // Subscribe to native Sample events and process through detector
+      const subscription = eventEmitter.addListener('Sample', (data: SampleEvent) => {
+        // Forward to listeners
+        handler(data);
+        
+        // Process through TypeScript detector
+        this.detector.processSample(data);
+      });
+      
+      const key = `Sample-${Date.now()}`;
+      this.subscriptions.set(key, subscription);
+      
+      return () => {
+        subscription.remove();
+        this.subscriptions.delete(key);
+        this.sampleListeners = this.sampleListeners.filter(h => h !== handler);
+      };
+    }
     
+    // Handle Detector events - forward from TypeScript detector
+    if (event === 'Detector') {
+      this.detectorListeners.push(handler);
+      
+      return () => {
+        this.detectorListeners = this.detectorListeners.filter(h => h !== handler);
+      };
+    }
+    
+    // Handle other events - forward directly from native
     const subscription = eventEmitter.addListener(event, (data) => {
-      console.log(`[NativePowerAdapter] 📡 Received ${event} event:`, data);
       handler(data);
     });
     const key = `${event}-${Date.now()}`;
     this.subscriptions.set(key, subscription);
 
-    console.log(`[NativePowerAdapter] ✅ Subscription created for ${event}`);
     return () => {
-      console.log(`[NativePowerAdapter] Unsubscribing from ${event}`);
       subscription.remove();
       this.subscriptions.delete(key);
     };
+  }
+
+  private emitDetectorEvent(event: DetectorEvent) {
+    this.detectorListeners.forEach(handler => handler(event));
+  }
+
+  /**
+   * Manually trigger START_HEAT detection (for testing/debugging)
+   * DISABLED: Manual detection removed in favor of automatic median-filtered detection
+   */
+  triggerManualDetection(): void {
+    if (__DEV__) {
+      console.log('[NativePowerAdapter] ⚠️ Manual detection disabled - using automatic detection only');
+    }
+    // No-op: Manual detection has been removed
   }
 
   getSnapshot() {
@@ -135,10 +228,11 @@ export class NativePowerAdapter implements IPowerController {
       return;
     }
     
-    console.log(`[NativePowerAdapter] Setting device detection threshold to: ${threshold}mA`);
     FervixNativePower.setDeviceDetectionThreshold(threshold)
       .then(() => {
-        console.log(`[NativePowerAdapter] ✅ Threshold set successfully to ${threshold}mA`);
+        if (__DEV__) {
+          console.log(`[NativePowerAdapter] ✅ Threshold set successfully to ${threshold}mA`);
+        }
       })
       .catch((error: Error) => {
         console.error('[NativePowerAdapter] ❌ Failed to set threshold:', error);
@@ -151,10 +245,11 @@ export class NativePowerAdapter implements IPowerController {
       return;
     }
     
-    console.log(`[NativePowerAdapter] Setting device detection END threshold to: ${threshold}mA`);
     FervixNativePower.setDeviceDetectionEndThreshold(threshold)
       .then(() => {
-        console.log(`[NativePowerAdapter] ✅ END threshold set successfully to ${threshold}mA`);
+        if (__DEV__) {
+          console.log(`[NativePowerAdapter] ✅ END threshold set successfully to ${threshold}mA`);
+        }
       })
       .catch((error: Error) => {
         console.error('[NativePowerAdapter] ❌ Failed to set END threshold:', error);
@@ -167,10 +262,11 @@ export class NativePowerAdapter implements IPowerController {
       return;
     }
     
-    console.log('[NativePowerAdapter] Enabling periodic recalibration');
     FervixNativePower.enablePeriodicRecalibration()
       .then(() => {
-        console.log('[NativePowerAdapter] ✅ Periodic recalibration enabled');
+        if (__DEV__) {
+          console.log('[NativePowerAdapter] ✅ Periodic recalibration enabled');
+        }
       })
       .catch((error: Error) => {
         console.error('[NativePowerAdapter] ❌ Failed to enable periodic recalibration:', error);
@@ -183,13 +279,31 @@ export class NativePowerAdapter implements IPowerController {
       return;
     }
     
-    console.log('[NativePowerAdapter] Disabling periodic recalibration');
     FervixNativePower.disablePeriodicRecalibration()
       .then(() => {
-        console.log('[NativePowerAdapter] ✅ Periodic recalibration disabled');
+        if (__DEV__) {
+          console.log('[NativePowerAdapter] ✅ Periodic recalibration disabled');
+        }
       })
       .catch((error: Error) => {
         console.error('[NativePowerAdapter] ❌ Failed to disable periodic recalibration:', error);
+      });
+  }
+
+  performRecalibration(): void {
+    if (!FervixNativePower) {
+      console.error('[NativePowerAdapter] Native module not available for performRecalibration');
+      return;
+    }
+    
+    FervixNativePower.performRecalibration()
+      .then(() => {
+        if (__DEV__) {
+          console.log('[NativePowerAdapter] ✅ Manual recalibration completed');
+        }
+      })
+      .catch((error: Error) => {
+        console.error('[NativePowerAdapter] ❌ Failed to perform manual recalibration:', error);
       });
   }
 }

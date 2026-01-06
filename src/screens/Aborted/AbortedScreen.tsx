@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -16,10 +16,38 @@ export const AbortedScreen: React.FC = () => {
   const { soundOn, vibrationOn } = useSettingsStore();
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  // Play error sound/vibration
+  // CRITICAL: Stop all playing sounds when AbortedScreen appears
+  // This runs immediately when the screen is focused (appears)
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('[AbortedScreen] 🔇 Screen focused - stopping all previous sounds (including heat_loop)');
+      
+      // Set audio mode to interrupt any playing sounds
+      // This helps stop sounds from previous screens
+      Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        staysActiveInBackground: false,
+        playThroughEarpieceAndroid: false,
+      }).catch((e) => {
+        console.log('[AbortedScreen] Audio mode error:', e);
+      });
+      
+      // Note: We can't directly stop HeatingScreen's soundRef, but setting audio mode
+      // should help interrupt it. The HeatingScreen cleanup should also handle it.
+    }, [])
+  );
+
+  // Play error sound/vibration (runs AFTER stopping previous sounds)
   useEffect(() => {
     (async () => {
       try {
+        // CRITICAL: Wait a moment to ensure heating sound is fully stopped
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Stop all sounds again to be absolutely sure
+        await Audio.stopAllSoundsAsync().catch(() => {});
+        
         // Play sound if enabled
         if (soundOn) {
           await Audio.setAudioModeAsync({
@@ -33,7 +61,7 @@ export const AbortedScreen: React.FC = () => {
             { shouldPlay: true, isLooping: false, volume: 0.8 }
           );
           soundRef.current = sound;
-          console.log('[AbortedScreen] 🔔 Playing error tone');
+          console.log('[AbortedScreen] 🔔 Playing error tone (heating sound should be stopped)');
         }
         
         // Play vibration if enabled

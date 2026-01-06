@@ -152,21 +152,6 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </FvCard> */}
 
-        {/* Power Monitor - commented out for production */}
-        {/* <FvCard style={styles.card}>
-          <Text style={styles.cardTitle}>Power Monitor</Text>
-          <Text style={styles.cardText}>
-            Monitor power controller activity, view samples, and adjust device detection threshold.
-          </Text>
-          <TouchableOpacity
-            style={styles.qrButton}
-            onPress={() => navigation.navigate('DevPower' as never)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="speedometer-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.qrButtonText}>Power Monitor</Text>
-          </TouchableOpacity>
-        </FvCard> */}
       </ScrollView>
     </SafeAreaView>
   );

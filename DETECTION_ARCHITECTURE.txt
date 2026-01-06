@@ -1,0 +1,551 @@
+FERVIX APP - DETECTION ARCHITECTURE OVERVIEW
+=============================================
+
+1. CURRENT DETECTION MECHANISM - DETAILED
+------------------------------------------
+
+PRIMARY FILES:
+- src/state/power/detector.ts (TypeScript detector - main detection logic)
+- android/app/src/main/java/com/fervix/app/FervixNativePowerModule.kt (Native Android module)
+
+NATIVE POWER MODULE (FervixNativePowerModule.kt):
+-------------------------------------------------
+
+The native module is responsible for:
+1. Battery Current Sampling:
+   - Reads BATTERY_PROPERTY_CURRENT_NOW from Android BatteryManager
+   - Samples at 100Hz (every 10ms) in a continuous loop
+   - Runs in a Kotlin coroutine (background thread)
+
+2. Unit Normalization:
+   - Handles different Android OEM implementations
+   - If |rawCurrent| < 10.0: Assumes Amperes, converts to mA (multiply by 1000)
+   - If |rawCurrent| > 100000: Assumes Microamps, converts to mA (divide by 1000)
+   - Otherwise: Assumes already in milliamps
+   - Result: Always outputs normalized current in milliamps (mA)
+
+3. Baseline Management:
+   - Maintains baselineCurrent (idle phone current)
+   - Collects samplesForBaseline (100 samples = 1 second at 100Hz)
+   - Calculates baseline as average of samples
+   - Updates baseline only when NOT heating and NOT in attach window
+   - Periodic recalibration every 1 second (PM specification)
+
+4. EMA Filtering:
+   - Applies Exponential Moving Average filter (ALPHA = 0.1)
+   - Reduces noise from battery readings
+   - Creates filteredCurrent for internal detection logic
+
+5. Sample Event Emission:
+   - Emits "Sample" event every 10ms with RAW current_mA (unfiltered)
+   - Includes: current_mA, voltage_V, power_W, battery_level, is_charging
+   - Always emits regardless of charging state (for debugging)
+
+6. Native Detection Logic (checkDeviceDetection):
+   - Uses baseline-relative threshold: 350mA (PM specification)
+   - Calculates deltaMag = |baseline - current| (direction-agnostic)
+   - Attach Window: 3-second window after USB attach with lower threshold (60mA)
+   - Debounce: 500ms for START, 500ms for END
+   - Emits "Detector" event with START_HEAT when threshold met
+   - Sets isHeating = true and changes phase to HEATUP
+
+7. Phase Management:
+   - Manages phase transitions: PREHEAT_DETECT -> HEATUP -> TREATMENT -> COOLDOWN -> DONE
+   - Monitors elapsed time for each phase
+   - Emits "PhaseChanged" events on transitions
+   - Handles ABORT phase when device disconnected during active phases
+
+TYPESCRIPT DETECTOR (detector.ts):
+----------------------------------
+
+The TypeScript detector processes samples from native module:
+
+1. Sample Processing Pipeline:
+   - Receives SampleEvent from native adapter
+   - Normalizes current: Converts to negative values (discharge convention)
+   - Applies median filter: 5-sample sliding window for noise reduction
+   - Calculates smoothCurrent = median of buffer
+
+2. Baseline Tracking (anchor_mA):
+   - Initializes anchor_mA on first valid sample
+   - Warmup period: 20 samples before detection starts
+   - Updates anchor_mA when idle and stable
+   - anchor_mA represents baseline current (idle phone)
+
+3. Drop Calculation:
+   - drop = anchor_mA - smoothCurrent
+   - Positive drop = more drain = device active
+   - Negative drop = recovery = device released
+
+4. Detection Logic (START_HEAT):
+   - Checks phase: Blocks if COOLDOWN, HEATUP, TREATMENT, DONE
+   - Verifies threshold: drop > DETECT_THRESHOLD_MA (160mA)
+   - Verification Window: Requires drop to sustain for 1 second (8 samples)
+   - Verification Process:
+     * Sets isVerifying = true when threshold first exceeded
+     * Increments verifyCount for each sample above threshold
+     * Resets if drop falls below threshold during verification
+     * Emits START_HEAT when verifyCount >= VERIFY_SAMPLES (8)
+   - Safety: Checks phase again before emitting (prevents race conditions)
+
+5. Abort Logic (END_HEAT):
+   - Monitors when isHeating = true
+   - Detects recovery: drop < ABORT_THRESHOLD_MA (80mA)
+   - Emits END_HEAT event
+   - Resets state: isHeating = false, updates anchor_mA
+
+6. Phase Management:
+   - setPhase() updates currentPhase
+   - Blocks all detection processing during COOLDOWN
+   - Resets verification state when phase changes to COOLDOWN
+   - Resets detector when phase returns to IDLE
+
+KEY PARAMETERS:
+- DETECT_THRESHOLD_MA = 160mA (TypeScript - minimum drop to start detection)
+- ABORT_THRESHOLD_MA = 80mA (TypeScript - recovery threshold)
+- THRESHOLD_ON_MA = 350mA (Native - PM specification)
+- VERIFY_SAMPLES = 8 (~800ms-1s verification window)
+- WINDOW_SIZE = 5 (median filter window)
+- WARMUP_SAMPLES = 20 (initial calibration)
+- MAX_RAMP_TIME_MS = 2000 (timeout for slow ramp)
+
+2. DETAILED WORKFLOW - FROM DETECTION TO COMPLETION
+----------------------------------------------------
+
+COMPLETE DETECTION TO HEATING WORKFLOW:
+
+Step 1: Native Module Sampling (Every 10ms)
+- FervixNativePowerModule.kt → startPowerMonitoring() coroutine
+- Reads battery current: getCurrentReading()
+- Normalizes units to milliamps
+- Applies EMA filter for internal use
+- Updates baseline if not heating
+- Emits "Sample" event with RAW current_mA
+
+Step 2: Adapter Bridge
+- nativeAdapter.ts receives "Sample" event from native module
+- Forwards to UI listeners (for DevPowerScreen display)
+- Processes through TypeScript detector: detector.processSample(data)
+
+Step 3: TypeScript Detector Processing
+- Normalizes current: normalizeCurrent() converts to negative values
+- Applies median filter: getMedian(buffer) - 5 sample window
+- Calculates drop: drop = anchor_mA - smoothCurrent
+- Phase Check: 
+  * Gets backendPhase from useSessionStore
+  * Blocks if phase === 'COOLDOWN' or currentPhase === 'COOLDOWN'
+  * Blocks if phase is HEATUP, TREATMENT, DONE
+- Threshold Check: if (drop > DETECT_THRESHOLD_MA) → start verification
+- Verification Process:
+  * Sets isVerifying = true, verifyCount = 1, anchorTime = now
+  * Each sample above threshold: verifyCount++
+  * If drop falls below threshold: reset verification
+  * If verifyCount >= VERIFY_SAMPLES (8): emit START_HEAT
+- Double-check phase before emitting (prevents race conditions)
+
+Step 4: UI Response (HomeScreen.tsx)
+- Subscribes to "Detector" events
+- Checks cooldown: if (isCoolingDown) return
+- Checks phase: if (backendPhase !== 'IDLE') return
+- On START_HEAT event:
+  * Plays detection sound: playDetectedSound()
+  * Sets deviceDetected = true
+  * Sets devicePhase = 'pressed'
+  * After 5 second delay: navigates to Heating screen
+
+Step 5: Native Module Phase Transition
+- Native module's checkDeviceDetection() also detects (dual system)
+- Sets isHeating = true
+- Changes currentPhase = "HEATUP"
+- Sets heatupStartTime = now
+- Emits "PhaseChanged" event: { phase: "HEATUP", remainingMs: 15000 }
+
+HEATUP PHASE (15 seconds):
+- Native module: checkPhaseChanges() monitors elapsed time
+- After 15 seconds: Transitions to TREATMENT phase
+- UI: HeatingScreen shows progress circle (0-100%)
+- Detector: BLOCKED (no detection during active phases)
+- Sound: Plays heating loop sound
+
+TREATMENT PHASE (20 seconds):
+- Native module: Monitors elapsed time from treatmentStartTime
+- After 20 seconds: Transitions to COOLDOWN phase
+- UI: TreatmentScreen shows treatment progress
+- Detector: BLOCKED
+- Sound: Plays windchimes treatment sound
+
+COOLDOWN PHASE (10 seconds):
+- Native module: Monitors elapsed time from cooldownStartTime
+- After 10 seconds: Transitions to DONE phase
+- UI: HomeScreen shows 12-second cooldown countdown
+- Detector: BLOCKED (explicit phase check in processSample)
+- Sets isSessionActive = false when DONE
+
+DONE PHASE:
+- Native module: Session stopped
+- UI: Returns to HomeScreen, cooldown countdown active
+- Detector: Phase reset to IDLE, detection re-enabled
+
+3. ABORT MECHANISM - DEVICE UNPLUGGED (DETECTION OFF)
+------------------------------------------------------
+
+When user unplugs device during active session:
+
+SCENARIO 1: Device Unplugged During HEATUP or TREATMENT
+
+Native Module Detection:
+- In startPowerMonitoring() loop, detects charging state change
+- If charging detected during HEATUP or TREATMENT:
+  * Sets isHeating = false
+  * Sets currentPhase = "ABORT"
+  * Emits "PhaseChanged": { phase: "ABORT", reason: "CHARGING_DETECTED_IMMEDIATE" }
+  * Logs: "🚨🚨🚨 IMMEDIATE ABORT: Charging detected during ${currentPhase}"
+
+TypeScript Detector Detection:
+- processSample() continues processing samples
+- When device unplugged: current returns to baseline
+- Calculates drop = anchor_mA - smoothCurrent
+- If drop < ABORT_THRESHOLD_MA (80mA):
+  * Sets isHeating = false
+  * Updates anchor_mA = smoothCurrent (reset baseline)
+  * Emits END_HEAT event: { type: 'END_HEAT', delta_mA: drop }
+
+UI Response:
+- HeatingScreen/TreatmentScreen subscribe to END_HEAT events
+- On END_HEAT:
+  * Stops heating/treatment sounds
+  * Sets deviceDisconnected = true
+  * Navigates to AbortedScreen
+  * Shows error message
+
+SCENARIO 2: Device Unplugged During IDLE (Before Detection)
+
+Native Module:
+- Detects charging state: isCharging = true
+- Closes attach window: closeAttachWindow()
+- Sets isHeating = false
+- Continues emitting Sample events (for debugging)
+
+TypeScript Detector:
+- Continues processing samples
+- If device was verifying: Resets verification state
+- No END_HEAT emitted (device never started heating)
+
+SCENARIO 3: Device Unplugged During COOLDOWN
+
+Native Module:
+- Phase is already COOLDOWN or DONE
+- Detection already blocked
+- No action needed (session already complete)
+
+TypeScript Detector:
+- Phase check blocks all processing during COOLDOWN
+- Returns null immediately: if (phase === 'COOLDOWN') return null
+- No END_HEAT emitted (session already complete)
+
+CLEANUP ON ABORT:
+- Detector state: isHeating = false, anchor_mA updated, verification reset
+- Native module: isHeating = false, phase = ABORT or IDLE
+- UI: Navigation stack reset, sounds stopped, error screen shown
+- Session store: backendPhase updated to ABORT
+
+STATE MANAGEMENT:
+- useSessionStore (Zustand) manages:
+  * backendPhase: 'IDLE' | 'HEATUP' | 'TREATMENT' | 'COOLDOWN' | 'DONE' | 'ABORT'
+  * live.baseline_mA: Current baseline current
+  * live.delta_mA: Current delta from baseline
+  * live.accessoryConnected: Device connection status
+
+- DetectorState tracks:
+  * buffer: Median filter buffer (5 samples)
+  * anchor_mA: Baseline current (idle phone)
+  * anchorTime: When drop started (for timeout)
+  * isHeating: Current heating state
+  * isVerifying: Verification in progress
+  * verifyCount: Verification sample count
+  * sampleCount: Total samples processed
+
+3. UI INTEGRATION - DETAILED
+----------------------------
+
+PRIMARY CONNECTION: src/screens/Home/HomeScreen.tsx
+
+Subscription Setup (Lines 326-412):
+- useEffect hook runs when HomeScreen is focused (isFocused = true)
+- First Check: if (!isFocused) return - Only active when screen visible
+- Second Check: if (isCoolingDown || coolingCountdown !== null) return - Blocks during cooldown
+- Binds PowerController: store.bindPowerController(PowerController)
+- Starts session: store.requestStart({ presetId: currentProfile })
+- Subscribes to "Detector" events:
+  * Additional cooldown check: if (isCoolingDown) return
+  * Phase check: if (backendPhase !== 'IDLE' && backendPhase !== 'PREHEAT_DETECT') return
+  * Prevents duplicate triggers: Checks devicePhaseRef.current
+  * On START_HEAT:
+    - Plays sound: playDetectedSound()
+    - Sets deviceDetected = true
+    - Sets devicePhase = 'pressed'
+    - After 5 second delay: navigation.navigate('Heating')
+- Cleanup: Unsubscribes when component unmounts or screen loses focus
+
+UI COMPONENTS:
+
+HomeScreen (src/screens/Home/HomeScreen.tsx):
+- "Insert Device" Banner: Shows when devicePhase === 'idle'
+- "Press Detected - Starting..." Banner: Shows when devicePhase === 'pressed'
+- Cooldown Countdown: Shows "Cooling down Xs" when coolingCountdown !== null
+- Device Image: Animated device image (currently commented out)
+- Blocks detection subscription during cooldown
+- Manages devicePhase state: 'idle' | 'pressed' | 'starting'
+
+HeatingScreen (src/screens/Heating/HeatingScreen.tsx):
+- Progress Circle: Animated circle showing heating progress (0-100%)
+- Subscribes to PhaseChanged events to track progress
+- Monitors END_HEAT events for device disconnect
+- On END_HEAT: Navigates to AbortedScreen
+- Plays heating loop sound during HEATUP phase
+- Shows heating animation and progress text
+
+TreatmentScreen (src/screens/Treatment/TreatmentScreen.tsx):
+- Treatment Progress: Shows treatment progress (0-100%)
+- Subscribes to PhaseChanged events
+- Monitors END_HEAT events for device disconnect
+- On END_HEAT: Navigates to AbortedScreen
+- Plays windchimes sound during TREATMENT phase
+- Shows treatment animation
+
+DevPowerScreen (src/screens/DevPowerScreen.tsx):
+- Real-time Current Display: Shows baseline_mA, delta_mA, current_mA
+- Device Detection Status: Green pill "Device Connected" or Orange "No Device"
+- Detection Threshold Control: Slider to adjust threshold (0.35A = 350mA PM spec)
+- Sample Rate Display: Shows actual sampling rate
+- Calibration Controls: Manual baseline reset, recalibration buttons
+- Sample History: Displays recent samples in graph/table format
+
+AbortedScreen (src/screens/Aborted/AbortedScreen.tsx):
+- Error Message: "Device Disconnected"
+- Plays error tone sound
+- Navigation: Back to HomeScreen button
+- Resets session state
+
+UI REACTION TO STATE CHANGES:
+
+START_HEAT Event:
+- Sound: playDetectedSound() (detection beep)
+- Haptic: Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+- UI State: setDeviceDetected(true), setDevicePhase('pressed')
+- Navigation: navigation.navigate('Heating') after 5s delay
+- Prevents duplicate: Checks devicePhaseRef.current before processing
+
+END_HEAT Event:
+- Sound: Stops heating/treatment sounds immediately
+- UI State: setDeviceDisconnected(true)
+- Navigation: navigation.navigate('Aborted')
+- Cleanup: Resets heating state
+
+PhaseChanged Event:
+- HEATUP: Updates progress, starts heating sound loop
+- TREATMENT: Transitions to TreatmentScreen, starts windchimes sound
+- COOLDOWN: Starts 12-second cooldown countdown on HomeScreen
+- DONE: Resets detection state, enables detection
+- ABORT: Navigates to AbortedScreen, stops all sounds
+
+4. FILE STRUCTURE - DETAILED
+-----------------------------
+
+POWER MONITORING SYSTEM (src/state/power/):
+
+detector.ts:
+- CurrentDetector class: Main TypeScript detection logic
+- processSample(): Processes each sample, implements detection algorithm
+- setPhase(): Manages phase state, blocks detection during active phases
+- normalizeCurrent(): Converts raw current to discharge convention
+- getMedian(): Median filter for noise reduction
+- subscribe(): Event subscription system
+- reset(): Resets detector state
+
+nativeAdapter.ts:
+- NativePowerAdapter class: Bridges native module to React Native
+- Receives Sample events from native module
+- Forwards to UI listeners
+- Processes samples through TypeScript detector
+- Subscribes to PhaseChanged events, updates detector phase
+- Emits Detector events from TypeScript detector to UI
+
+controller.ts:
+- PowerControllerSingleton: Singleton facade
+- Selects implementation: Simulator (dev) or Native (production)
+- USE_POWER_SIM flag: false = native, true = simulator
+- Delegates all calls to selected implementation
+- Exports PowerController instance
+
+contracts.ts:
+- Type definitions: Phase, DetectorEvent, SampleEvent, etc.
+- IPowerController interface: Contract for power monitoring
+- Event handler types: SampleHandler, DetectorHandler, etc.
+- Preset configurations: child/adult profiles
+- DETECTOR_CONFIG constants
+
+simulator.ts:
+- PowerSimulator class: Development/testing simulator
+- Generates fake Sample events
+- Simulates device detection for testing
+- Only used when USE_POWER_SIM = true
+
+index.ts:
+- Exports: PowerController, contracts, NativePowerAdapter
+
+STATE MANAGEMENT (src/state/):
+
+useSessionStore.ts:
+- Zustand store for session state
+- Manages: profile, phase, backendPhase, live.baseline_mA, live.delta_mA
+- Binds PowerController, subscribes to PhaseChanged events
+- Updates backendPhase when PhaseChanged events received
+- Maps backend Phase to legacy phase strings
+- Manages currentSession and sessionHistory
+
+useSettingsStore.ts:
+- Settings state: manualDetectionMode, sensitive, soundOn, vibrationOn
+- Profile settings persistence
+
+useActivationStore.ts:
+- Device activation state
+- QR code activation management
+
+UI SCREENS (src/screens/):
+
+Home/HomeScreen.tsx:
+- Main detection UI
+- Detection subscription setup
+- Cooldown countdown management
+- Device phase state management
+- Navigation to Heating screen
+
+Heating/HeatingScreen.tsx:
+- Heating progress display
+- END_HEAT monitoring
+- Progress circle animation
+- Sound management
+
+Treatment/TreatmentScreen.tsx:
+- Treatment progress display
+- END_HEAT monitoring
+- Treatment animation
+- Sound management
+
+DevPowerScreen.tsx:
+- Debug/development screen
+- Real-time current monitoring
+- Threshold adjustment
+- Calibration controls
+
+Aborted/AbortedScreen.tsx:
+- Device disconnect error screen
+- Navigation back to Home
+
+NATIVE MODULE (android/app/src/main/java/com/fervix/app/):
+
+FervixNativePowerModule.kt:
+- React Native native module (Kotlin)
+- Extends ReactContextBaseJavaModule
+- Main methods:
+  * startSession(): Starts power monitoring session
+  * stopSession(): Stops session
+  * getSnapshot(): Returns current power state
+  * setDeviceDetectionThreshold(): Sets detection threshold
+- Internal methods:
+  * startPowerMonitoring(): Main sampling loop (coroutine)
+  * getCurrentReading(): Reads battery current
+  * checkDeviceDetection(): Native detection logic
+  * updateBaseline(): Baseline management
+  * checkPhaseChanges(): Phase transition logic
+  * filter(): EMA filter
+  * deltaMag(): Direction-agnostic delta calculation
+
+5. INTEGRATION POINTS - DETAILED
+----------------------------------
+
+BEST PLACE TO INTEGRATE NEW DETECTION:
+
+Option 1: Replace TypeScript Detector (RECOMMENDED)
+- File: src/state/power/detector.ts
+- Method: Replace CurrentDetector.processSample()
+- Advantages:
+  * Single detection system (eliminates dual system conflict)
+  * TypeScript is easier to debug/test
+  * Can keep native module for sampling only
+  * Better integration with React Native
+- Implementation:
+  * Keep CurrentDetector class structure
+  * Replace detection algorithm in processSample()
+  * Keep event emission system
+  * Maintain phase blocking logic
+
+Option 2: Remove Native Detection
+- File: android/app/src/main/java/com/fervix/app/FervixNativePowerModule.kt
+- Method: Remove checkDeviceDetection() calls, keep sampling only
+- Advantages:
+  * Eliminates race conditions
+  * Single source of truth for detection
+- Implementation:
+  * Remove deviceDetected = checkDeviceDetection() call
+  * Remove START_HEAT emission from native module
+  * Keep Sample event emission
+  * Keep phase management
+
+Option 3: Hybrid Approach (BEST)
+- Native Module: Sampling only (remove checkDeviceDetection())
+- TypeScript Detector: All detection logic
+- File: nativeAdapter.ts - Remove native detection, keep TypeScript only
+- Advantages:
+  * Best of both worlds
+  * Native for fast sampling
+  * TypeScript for flexible detection logic
+
+INTERFACES TO IMPLEMENT:
+
+IPowerController Interface (contracts.ts):
+- startSession(params): Starts monitoring session
+- stopSession(): Stops session
+- subscribe(event, handler): Event subscription
+- getSnapshot(): Returns current state
+- setDeviceDetectionThreshold(threshold): Sets threshold
+- setDeviceDetectionEndThreshold(threshold): Sets end threshold
+
+DetectorEvent Interface:
+- type: 'START_HEAT' | 'END_HEAT' | 'ACCESSORY_CONNECTED' | 'ACCESSORY_DISCONNECTED'
+- tMillis: Timestamp in milliseconds
+- delta_mA: Current delta from baseline
+
+SampleEvent Interface:
+- tMillis: Timestamp
+- current_mA: Raw current in milliamps
+- voltage_V: Battery voltage
+- power_W: Calculated power
+- battery_level: Battery percentage
+- is_charging: Charging state
+- baseline_current: Current baseline
+- delta_mA: Delta from baseline
+- calibration_complete: Calibration status
+
+DEPENDENCIES:
+
+Native Dependencies:
+- Android BatteryManager (android.os.BatteryManager):
+  * BATTERY_PROPERTY_CURRENT_NOW: Current reading
+  * EXTRA_VOLTAGE: Voltage reading
+  * EXTRA_STATUS: Charging status
+- Android USB Manager (android.hardware.usb.UsbManager):
+  * USB device attach/detach detection
+  * USB state monitoring
+
+React Native Dependencies:
+- NativeModules: Bridge to native module
+- NativeEventEmitter: Event subscription system
+- Zustand: State management library
+- React Navigation: Screen navigation
+- Expo Audio: Sound playback
+- Expo Haptics: Haptic feedback
+
+External Services:
+- None: All detection is local (no cloud/API dependencies)

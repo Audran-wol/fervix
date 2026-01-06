@@ -231,5 +231,20 @@ export class PowerSimulator implements IPowerController {
   private emitPhaseChangedEvent(event: PhaseChangedEvent) {
     this.phaseListeners.forEach(handler => handler(event));
   }
+
+  performRecalibration(): void {
+    console.log('[PowerSimulator] Performing manual recalibration');
+    // In simulator, we can trigger a baseline update
+    this.baseline_mA = this.getSimulatedCurrent();
+    console.log(`[PowerSimulator] ✅ Manual recalibration completed - new baseline: ${this.baseline_mA.toFixed(1)}mA`);
+  }
+
+  /**
+   * Manually trigger START_HEAT detection (for testing/debugging)
+   */
+  triggerManualDetection(): void {
+    console.log('[PowerSimulator] 🔧 Manual detection trigger requested');
+    this.detector.triggerManualDetection();
+  }
 }
 

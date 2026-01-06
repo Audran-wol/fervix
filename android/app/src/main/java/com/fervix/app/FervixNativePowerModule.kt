@@ -52,49 +52,43 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     private var lastIsCharging: Boolean = false
     private var lastPlugType: Int = 0 // 0 none, 1 AC, 2 USB, 4 WIRELESS
     
-    // Device detection variables (POSITIVE magnitudes in mA)
-    private var deviceDetectionThreshold = 200.0 // mA magnitude for START (lowered to match real deltas)
-    private var deviceDetectionEndThreshold = 50.0 // mA magnitude for END (hysteresis) - more sensitive
+    // Device detection variables (PM specification: baseline-relative thresholds)
+    // Threshold (ON) = Baseline - 350mA (device must drain 350mA more than baseline)
+    // Threshold (OFF) = Baseline + 350mA (device returns within 350mA of baseline)
+    private val THRESHOLD_ON_MA = 0.35  // PM specification: 350mA = 0.35A threshold
+    private val THRESHOLD_OFF_MA = 0.35  // PM specification: 350mA = 0.35A threshold
+    private var deviceDetectionThreshold = 0.35 // Will be calculated as baseline - 0.35A (350mA)
+    private var deviceDetectionEndThreshold = 0.35 // Will be calculated as baseline + 0.35A (350mA)
     private var baselineCurrent = 0.0
     private var lastDeviceConnected = false
     private var samplesForBaseline = mutableListOf<Double>()
-    private val maxBaselineSamples = 120 // ~30s at 4Hz sampling
+    private val maxBaselineSamples = 100 // 1 second window at 10ms sampling (100Hz) - PM specification
     
     // Direction detection (auto-detected during calibration)
     private var dischargeNegative = true // true = discharging current is negative
 
     // EMA filter for noise reduction
     private var ema: Double? = null
-    private val SAMPLE_MS = 250L // 4 Hz sampling
+    private val SAMPLE_MS = 10L // 10ms sampling (100Hz) - PM specification
     private val ALPHA = 0.1 // ~3-5s time constant
 
     // Debouncing state
     private var startCandidateTime: Long? = null
     private var endCandidateTime: Long? = null
     private var isHeating = false
-    private val START_DEBOUNCE_MS = 800L  // Faster detection: 0.8s instead of 1.5s
-    private val END_DEBOUNCE_MS_NORMAL = 1500L  // Normal debounce for non-critical phases
-    private val END_DEBOUNCE_MS_ACTIVE = 300L   // FAST abort for HEATUP/TREATMENT (300ms)
-
-    // Helper function to get appropriate debounce time based on phase
-    private fun getEndDebounceMs(): Long {
-        return if (currentPhase == "HEATUP" || currentPhase == "TREATMENT") {
-            END_DEBOUNCE_MS_ACTIVE  // 300ms during active phases (fast abort!)
-        } else {
-            END_DEBOUNCE_MS_NORMAL  // 1500ms otherwise
-        }
-    }
+    private val START_DEBOUNCE_MS = 500L  // 0.5s debounce - PM specification
+    private val END_DEBOUNCE_MS = 500L    // 0.5s debounce - PM specification (standardized for both ON/OFF)
 
     // Calibration
     private var calibrationComplete = false
     private val CALIBRATION_DURATION_MS = 3000L  // Reduced to 3s for faster UX
 
-    // Periodic recalibration (client requirement: every 10 seconds)
+    // Periodic recalibration (PM specification: every 1 second)
     private var lastRecalibrationTime: Long = 0L
-    private val RECALIBRATION_INTERVAL_MS = 10000L  // 10 seconds as requested by client
+    private val RECALIBRATION_INTERVAL_MS = 1000L  // 1 second - PM specification
     private var recalibrationEnabled = false
     private var recentBaselineSamples = mutableListOf<Double>()
-    private val RECENT_BASELINE_SAMPLES = 40  // ~10s at 4Hz sampling
+    private val RECENT_BASELINE_SAMPLES = 100  // 1 second at 10ms sampling (100Hz) - PM specification
 
     // Phase management
     private var currentPhase = "IDLE"
@@ -223,6 +217,34 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
             startPowerMonitoring()
 
             promise.resolve("Session started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting session", e)
+            promise.reject("SESSION_START_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun triggerHeatupPhase() {
+        Log.d(TAG, "🔥 Triggering HEATUP phase from TypeScript detector")
+        val now = System.currentTimeMillis()
+        
+        if (currentPhase == "PREHEAT_DETECT" || currentPhase == "IDLE") {
+            currentPhase = "HEATUP"
+            heatupStartTime = now
+            lastPhaseChangeTime = now
+            isHeating = true
+            
+            Log.d(TAG, "📡📡📡 Sending PhaseChanged: HEATUP")
+            sendEvent("PhaseChanged", Arguments.createMap().apply {
+                putString("phase", "HEATUP")
+                putLong("remainingMs", 15000)
+                putString("timestamp", now.toString())
+            })
+            Log.d(TAG, "✅✅✅ PhaseChanged: HEATUP sent successfully")
+        } else {
+            Log.w(TAG, "⚠️ Cannot trigger HEATUP - currentPhase is: $currentPhase")
+        }
+    }
         } catch (e: Exception) {
             Log.e(TAG, "Error starting session", e)
             promise.reject("START_SESSION_ERROR", e.message, e)
@@ -357,11 +379,18 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
                         closeAttachWindow()
                     }
                     
-                    // PM Fix #4: Check if charging and block detection
+                    // Read raw current (unfiltered for variance calculation) - ALWAYS read
+                    val rawCurrent = getCurrentReading()
+                    val filteredCurrent = filter(rawCurrent)  // Keep filter for internal detection logic
+                    val voltage = getVoltageReading()
                     val batteryInfo = getBatteryInfo()
                     val charging = batteryInfo["is_charging"] as Boolean
                     
-                    if (charging) {
+                    // Calculate delta magnitude for reporting
+                    var deltaMagnitude = 0.0
+                    
+                    // Update baseline only when not charging
+                    if (!charging) {
                         // CRITICAL: Immediate abort if charging detected during active phases
                         if (currentPhase == "HEATUP" || currentPhase == "TREATMENT") {
                             Log.d(TAG, "🚨🚨🚨 IMMEDIATE ABORT: Charging detected during ${currentPhase}")
@@ -373,63 +402,42 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
                                 "reason", "CHARGING_DETECTED_IMMEDIATE",
                                 "timestamp", now.toString()
                             ))
-                            sendEvent("Sample", Arguments.createMap().apply {
-                                putString("state", "ABORTED")
-                                putBoolean("is_charging", true)
-                                putString("phase", "ABORT")
-                                putString("timestamp", now.toString())
-                            })
-                            delay(SAMPLE_MS)
-                            continue
                         }
                         
-                        // Normal behavior: Hard-block detection while charging
+                        updateBaseline(filteredCurrent)
+                    
+                        // Calculate delta magnitude for reporting (TypeScript detector handles detection)
+                        deltaMagnitude = deltaMag(filteredCurrent, baselineCurrent)
+                    } else {
+                        // Charging state: Close attach window and reset detection
                         closeAttachWindow()
-                        sendEvent("Sample", Arguments.createMap().apply {
-                            putString("state", "PAUSED_CHARGING")
-                            putBoolean("is_charging", true)
-                            putBoolean("calibration_complete", calibrationComplete)
-                            putString("timestamp", now.toString())
-                        })
-                        delay(SAMPLE_MS)
-                        continue
+                        isHeating = false
                     }
                     
-                    // Read and filter current (PM Fix #3 & #5)
-                    val rawCurrent = getCurrentReading()
-                    val current = filter(rawCurrent)
-                    val voltage = getVoltageReading()
+                    // FORCE EMISSION: Always send Sample event with RAW data (every 10ms) - regardless of charging state
+                    // Verification: Log normalized current to verify unit conversion
+                    Log.d(TAG, "Normalized Current: ${"%.2f".format(rawCurrent)} mA")
                     
-                    // Update baseline (PM Fix #2 - auto-freezes when heating)
-                    updateBaseline(current)
-                    
-                    // Check device detection (PM Fix #1 - direction-agnostic)
-                    val deviceDetected = checkDeviceDetection(current)
-                    
-                    // Calculate delta magnitude for reporting
-                    val deltaMagnitude = deltaMag(current, baselineCurrent)
-                    
-                    // Send sample event with real battery data and device detection
                     sendEvent("Sample", Arguments.createMap().apply {
-                        putDouble("current_mA", current)
+                        putDouble("current_mA", rawCurrent)  // RAW data, normalized to milliamps
                         putDouble("voltage_V", voltage)
-                        putDouble("power_W", current * voltage / 1000.0)
+                        putDouble("power_W", rawCurrent * voltage / 1000.0)
                         putInt("battery_level", batteryInfo["level"] as Int)
                         putString("charging_status", batteryInfo["status"] as String)
-                        putBoolean("is_charging", false)
-                        putBoolean("device_detected", deviceDetected)
+                        putBoolean("is_charging", charging)
+                        putBoolean("device_detected", false)  // TypeScript detector handles detection
                         putDouble("baseline_current", baselineCurrent)
                         putDouble("delta_mA", deltaMagnitude) // positive = more drain
                         putDouble("detection_threshold", deviceDetectionThreshold)
                         putBoolean("calibration_complete", calibrationComplete)
-                        putBoolean("attach_window_active", attachArmed && (System.currentTimeMillis() <= attachWindowUntil))
+                        putBoolean("attach_window_active", !charging && attachArmed && (System.currentTimeMillis() <= attachWindowUntil))
                         putString("timestamp", System.currentTimeMillis().toString())
                     })
                     
                     // Check for phase changes
                     checkPhaseChanges()
                     
-                    // PM recommended: 4Hz sampling (250ms)
+                    // PM specification: 100Hz sampling (10ms)
                     delay(SAMPLE_MS)
                     
                 } catch (e: Exception) {
@@ -466,24 +474,29 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     private fun getCurrentReading(): Double {
         try {
             // Get real battery current from Android BatteryManager
-            val raw = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+            val raw = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW).toDouble()
             
-            // DETERMINISTIC UNIT CONVERSION (PM Fix #5)
-            // Assume µA → mA (most common)
-            var mA = raw / 1000.0
+            // UNIT NORMALIZATION: Always return milliamps (mA)
+            // Check magnitude to determine input unit and convert to mA
+            val normalizedCurrent: Double = when {
+                // IF |raw| < 10.0: It is likely Amperes. Multiply by 1000 to get mA
+                Math.abs(raw) < 10.0 -> raw * 1000.0
             
-            // Sanity: if |mA| > 10000 (>10A is nonsense for phones)
-            if (Math.abs(mA) > 10000.0) {
-                // Likely already in mA
-                mA = raw.toDouble()
+                // IF |raw| > 100000: It is likely Microamps. Divide by 1000 to get mA
+                Math.abs(raw) > 100000.0 -> raw / 1000.0
+                
+                // ELSE: It is likely Milliamps. Leave it as is
+                else -> raw
             }
             
-            // Clamp out-of-range noise
-            if (Math.abs(mA) < 0.1) {
-                mA = 0.0
+            // Clamp out-of-range noise (values < 0.1mA are considered noise)
+            val finalCurrent = if (Math.abs(normalizedCurrent) < 0.1) {
+                0.0
+            } else {
+                normalizedCurrent
             }
             
-            return mA
+            return finalCurrent
         } catch (e: Exception) {
             Log.e(TAG, "Error reading battery current", e)
             return 0.0
@@ -658,29 +671,27 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
             // Update baseline
             baselineCurrent = newBaseline
             
-            // Recalculate thresholds based on new baseline
-            // Use the same logic as DevPowerScreen: start = baseline - 50, end = start * 0.5
-            val newStartThreshold = Math.max(260.0, newBaseline - 50.0)
-            val newEndThreshold = newStartThreshold * 0.5
-            
-            // Update thresholds
-            deviceDetectionThreshold = newStartThreshold
-            deviceDetectionEndThreshold = newEndThreshold
+            // PM specification: Thresholds are fixed at 350mA delta from baseline
+            // Threshold (ON) = Baseline - 350mA (always 350mA delta)
+            // Threshold (OFF) = Baseline + 350mA (always 350mA delta)
+            // Thresholds remain constant at 350mA - no recalculation needed
+            deviceDetectionThreshold = THRESHOLD_ON_MA  // Always 350mA
+            deviceDetectionEndThreshold = THRESHOLD_OFF_MA  // Always 350mA
             
             Log.d(TAG, "🔄 Periodic recalibration complete:")
             Log.d(TAG, "  Baseline: ${"%.1f".format(oldBaseline)}mA → ${"%.1f".format(newBaseline)}mA")
-            Log.d(TAG, "  Start TH: ${"%.1f".format(oldStartThreshold)}mA → ${"%.1f".format(newStartThreshold)}mA")
-            Log.d(TAG, "  End TH: ${"%.1f".format(oldEndThreshold)}mA → ${"%.1f".format(newEndThreshold)}mA")
+            Log.d(TAG, "  Threshold (ON): ${"%.1f".format(THRESHOLD_ON_MA)}mA (fixed)")
+            Log.d(TAG, "  Threshold (OFF): ${"%.1f".format(THRESHOLD_OFF_MA)}mA (fixed)")
             
             // Send recalibration event to frontend
             sendEvent("Recalibration", map(
                 "type", "PERIODIC_UPDATE",
                 "oldBaseline", oldBaseline,
                 "newBaseline", newBaseline,
-                "oldStartThreshold", oldStartThreshold,
-                "newStartThreshold", newStartThreshold,
-                "oldEndThreshold", oldEndThreshold,
-                "newEndThreshold", newEndThreshold,
+                "oldStartThreshold", THRESHOLD_ON_MA,  // Always 350mA
+                "newStartThreshold", THRESHOLD_ON_MA,    // Always 350mA
+                "oldEndThreshold", THRESHOLD_OFF_MA,    // Always 350mA
+                "newEndThreshold", THRESHOLD_OFF_MA,     // Always 350mA
                 "timestamp", now.toString()
             ))
         } else {
@@ -707,13 +718,14 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
         val batteryInfo = getBatteryInfo()
         val isCharging = batteryInfo["is_charging"] as? Boolean ?: false
 
-        // Start rules:
-        //  - Inside attach window: accept small delta vs frozen baseline OR a single step spike
-        //  - Outside window: use strict threshold (max of configured and OUTSIDE_WINDOW_MIN_MA)
+        // PM specification: Threshold (ON) = Baseline - 350mA
+        // Current must drain 350mA more than baseline (delta magnitude >= 350mA)
+        // Inside attach window: accept smaller delta for faster detection
+        // Outside window: use full 350mA threshold
         val startAllowed = if (inAttachWindow) {
-            (dAttach >= ATTACH_DELTA_MIN_MA) || (step >= STEP_THRESHOLD_MA)
+            (dAttach >= ATTACH_DELTA_MIN_MA) || (step >= STEP_THRESHOLD_MA) || (dGlobal >= THRESHOLD_ON_MA)
         } else {
-            dGlobal >= Math.max(deviceDetectionThreshold, OUTSIDE_WINDOW_MIN_MA)
+            dGlobal >= THRESHOLD_ON_MA  // PM spec: 350mA threshold
         }
 
         Log.d(TAG, "🔍 Detect: cur=${"%.2f".format(current)} base=${"%.2f".format(baselineCurrent)} " +
@@ -731,39 +743,36 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
                     endCandidateTime = null
                     closeAttachWindow()  // prevent re-firing
 
-                    Log.d(TAG, "🔥🔥🔥 START_HEAT confirmed! Setting phase to HEATUP")
-                    sendEvent("Detector", map("type","START_HEAT","delta_mA",dGlobal,"tMillis",now))
-                    if (currentPhase == "PREHEAT_DETECT") {
-                        currentPhase = "HEATUP"
-                        heatupStartTime = now
-                        lastPhaseChangeTime = now
-                        Log.d(TAG, "📡📡📡 Sending PhaseChanged: HEATUP")
-                        sendPhase("HEATUP", 15000L)
-                        Log.d(TAG, "✅✅✅ PhaseChanged: HEATUP sent successfully")
-                    } else {
-                        Log.w(TAG, "⚠️ Not sending HEATUP - currentPhase is: $currentPhase")
-                    }
+                    // REMOVED: Native detection - TypeScript detector handles START_HEAT
+                    // Log.d(TAG, "🔥🔥🔥 START_HEAT confirmed! Setting phase to HEATUP")
+                    // sendEvent("Detector", map("type","START_HEAT","delta_mA",dGlobal,"tMillis",now))
+                    // Phase transitions are now handled by TypeScript detector via START_HEAT event
+                    // if (currentPhase == "PREHEAT_DETECT") {
+                    //     currentPhase = "HEATUP"
+                    //     heatupStartTime = now
+                    //     lastPhaseChangeTime = now
+                    //     Log.d(TAG, "📡📡📡 Sending PhaseChanged: HEATUP")
+                    //     sendPhase("HEATUP", 15000L)
+                    //     Log.d(TAG, "✅✅✅ PhaseChanged: HEATUP sent successfully")
+                    // } else {
+                    //     Log.w(TAG, "⚠️ Not sending HEATUP - currentPhase is: $currentPhase")
+                    // }
                 }
             } else {
                 startCandidateTime = null
             }
         } else {
-            // Enhanced END detection with multiple conditions
-            val isInActivePhase = currentPhase == "HEATUP" || currentPhase == "TREATMENT"
-            val effectiveEndThreshold = if (isInActivePhase) {
-                // More sensitive during active phases - use 50% of end threshold
-                deviceDetectionEndThreshold * 0.5
-            } else {
-                deviceDetectionEndThreshold
-            }
+            // PM specification: Threshold (OFF) = Baseline + 350mA
+            // Current must return within 350mA of baseline (delta magnitude <= 350mA)
+            // For abort detection: Use PM spec threshold (350mA) for consistent behavior
+            val deltaBelowThreshold = dGlobal <= THRESHOLD_OFF_MA  // PM spec: 350mA threshold
             
             // AGGRESSIVE ABORT DETECTION - Multiple redundant conditions for reliability across all phones:
-            // 1. Delta falls below threshold (normal hysteresis) - Device current drop from baseline
+            // 1. Delta falls below threshold (PM spec: 350mA) - Device current returns to baseline
             // 2. Device goes into charging mode (unplugged) - MOST RELIABLE
             // 3. Current suddenly stops draining (goes from negative to positive/zero)
-            // 4. Dramatic current jump back towards baseline (device removed, current returns to idle) - NEW
-            // 5. Drastic reduction in device drain (>300mA drop from device baseline) - NEW
-            val deltaBelowThreshold = dGlobal <= effectiveEndThreshold
+            // 4. Dramatic current jump back towards baseline (device removed, current returns to idle)
+            // 5. Drastic reduction in device drain (>300mA drop from device baseline)
             val deviceUnplugged = isCharging
             val suddenCurrentStop = lastEma != null && 
                                   lastEma!! < -0.1 && // Was draining significantly
@@ -784,14 +793,14 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
             val shouldEnd = deltaBelowThreshold || deviceUnplugged || suddenCurrentStop || 
                            currentReturnedToBaseline || drasticDrainReduction
             
-            Log.d(TAG, "🔍 END Check: dGlobal=${"%.1f".format(dGlobal)} threshold=${"%.1f".format(effectiveEndThreshold)} " +
+            Log.d(TAG, "🔍 END Check: dGlobal=${"%.1f".format(dGlobal)} threshold=${"%.1f".format(THRESHOLD_OFF_MA)} " +
                     "deltaBelow=$deltaBelowThreshold unplugged=$deviceUnplugged suddenStop=$suddenCurrentStop " +
                     "returnedToBaseline=$currentReturnedToBaseline drasticReduction=$drasticDrainReduction " +
-                    "debounce=${getEndDebounceMs()}ms shouldEnd=$shouldEnd")
+                    "debounce=${END_DEBOUNCE_MS}ms shouldEnd=$shouldEnd")
 
             if (shouldEnd) {
                 if (endCandidateTime == null) endCandidateTime = now
-                else if (now - endCandidateTime!! >= getEndDebounceMs()) {
+                else if (now - endCandidateTime!! >= END_DEBOUNCE_MS) {
                     isHeating = false
                     endCandidateTime = null
                     startCandidateTime = null
@@ -802,13 +811,15 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
                         else -> "LOST_SIGNAL"
                     }
                     
-                    sendEvent("Detector", map("type","END_HEAT","delta_mA",dGlobal,"tMillis",now,"reason",disconnectReason))
-                    if (currentPhase != "COOLDOWN" && currentPhase != "DONE") {
-                        currentPhase = "ABORT"
-                        lastPhaseChangeTime = now
-                        sendEvent("PhaseChanged", map("phase","ABORT","reason",disconnectReason,"timestamp", now.toString()))
-                        Log.d(TAG, "🚨🚨🚨 DEVICE DISCONNECTED - Phase changed to ABORT: $disconnectReason")
-                    }
+                    // REMOVED: Native detection - TypeScript detector handles END_HEAT
+                    // sendEvent("Detector", map("type","END_HEAT","delta_mA",dGlobal,"tMillis",now,"reason",disconnectReason))
+                    // Phase transitions are now handled by TypeScript detector via END_HEAT event
+                    // if (currentPhase != "COOLDOWN" && currentPhase != "DONE") {
+                    //     currentPhase = "ABORT"
+                    //     lastPhaseChangeTime = now
+                    //     sendEvent("PhaseChanged", map("phase","ABORT","reason",disconnectReason,"timestamp", now.toString()))
+                    //     Log.d(TAG, "🚨🚨🚨 DEVICE DISCONNECTED - Phase changed to ABORT: $disconnectReason")
+                    // }
                 }
             } else {
                 endCandidateTime = null
@@ -1041,6 +1052,25 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     fun forceAttachWindow(promise: Promise) {
         scheduleAttachWindow()
         promise.resolve(true)
+    }
+
+    @ReactMethod
+    fun performRecalibration(promise: Promise) {
+        Log.d(TAG, "🔄 [MANUAL RECALIBRATION] Performing manual recalibration")
+        try {
+            // Force a recalibration by clearing recent samples and triggering update
+            recentBaselineSamples.clear()
+            lastRecalibrationTime = System.currentTimeMillis()
+            
+            // Trigger immediate recalibration
+            performPeriodicRecalibration(System.currentTimeMillis())
+            
+            Log.d(TAG, "🔄 [MANUAL RECALIBRATION] ✅ Manual recalibration completed")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "🔄 [MANUAL RECALIBRATION] ❌ Failed to perform manual recalibration", e)
+            promise.reject("RECALIBRATION_ERROR", "Failed to perform manual recalibration", e)
+        }
     }
 
     private fun startUsbPoller() {

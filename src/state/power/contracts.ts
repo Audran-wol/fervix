@@ -100,6 +100,7 @@ export interface IPowerController {
   setDeviceDetectionEndThreshold?(threshold: number): void;
   enablePeriodicRecalibration?(): void;
   disablePeriodicRecalibration?(): void;
+  performRecalibration?(): void;
 }
 
 // Detector configuration constants

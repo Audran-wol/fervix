@@ -28,11 +28,15 @@ class PowerControllerSingleton implements IPowerController {
     if (USE_POWER_SIM) {
       // Use simulator for development/testing
       this.implementation = new PowerSimulator();
-      console.log('[PowerController] Using simulator implementation');
+      if (__DEV__) {
+        console.log('[PowerController] Using simulator implementation');
+      }
     } else {
       // Use native implementation
       this.implementation = new NativePowerAdapter();
-      console.log('[PowerController] Using native implementation');
+      if (__DEV__) {
+        console.log('[PowerController] Using native implementation');
+      }
     }
   }
 
@@ -86,6 +90,26 @@ class PowerControllerSingleton implements IPowerController {
       (this.implementation as any).disablePeriodicRecalibration();
     } else {
       console.warn('[PowerController] disablePeriodicRecalibration not available in current implementation');
+    }
+  }
+
+  performRecalibration(): void {
+    if ('performRecalibration' in this.implementation) {
+      (this.implementation as any).performRecalibration();
+    } else {
+      console.warn('[PowerController] performRecalibration not available in current implementation');
+    }
+  }
+
+  /**
+   * Manually trigger START_HEAT detection (for testing/debugging)
+   * This bypasses automatic detection and directly emits START_HEAT event
+   */
+  triggerManualDetection(): void {
+    if ('triggerManualDetection' in this.implementation) {
+      (this.implementation as any).triggerManualDetection();
+    } else {
+      console.warn('[PowerController] triggerManualDetection not available in current implementation');
     }
   }
 }
