@@ -1,0 +1,23 @@
+# Exclude Flutter project
+untitled/
+
+# Exclude development files
+.cursor/
+*.md
+!README.md
+DETECTION_ARCHITECTURE.txt
+image/
+calibration_log.csv
+*.xlsx
+*.pdf
+
+# Exclude test files
+test_*.bat
+*.test.ts
+*.test.tsx
+
+# Exclude build artifacts
+android/app/build/
+android/build/
+ios/build/
+*.iml
