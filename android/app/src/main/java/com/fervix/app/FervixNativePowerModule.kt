@@ -224,30 +224,32 @@ class FervixNativePowerModule(reactContext: ReactApplicationContext) : ReactCont
     }
 
     @ReactMethod
-    fun triggerHeatupPhase() {
+    fun triggerHeatupPhase(promise: Promise) {
         Log.d(TAG, "🔥 Triggering HEATUP phase from TypeScript detector")
         val now = System.currentTimeMillis()
         
-        if (currentPhase == "PREHEAT_DETECT" || currentPhase == "IDLE") {
-            currentPhase = "HEATUP"
-            heatupStartTime = now
-            lastPhaseChangeTime = now
-            isHeating = true
-            
-            Log.d(TAG, "📡📡📡 Sending PhaseChanged: HEATUP")
-            sendEvent("PhaseChanged", Arguments.createMap().apply {
-                putString("phase", "HEATUP")
-                putLong("remainingMs", 15000)
-                putString("timestamp", now.toString())
-            })
-            Log.d(TAG, "✅✅✅ PhaseChanged: HEATUP sent successfully")
-        } else {
-            Log.w(TAG, "⚠️ Cannot trigger HEATUP - currentPhase is: $currentPhase")
-        }
-    }
+        try {
+            if (currentPhase == "PREHEAT_DETECT" || currentPhase == "IDLE") {
+                currentPhase = "HEATUP"
+                heatupStartTime = now
+                lastPhaseChangeTime = now
+                isHeating = true
+                
+                Log.d(TAG, "📡📡📡 Sending PhaseChanged: HEATUP")
+                sendEvent("PhaseChanged", Arguments.createMap().apply {
+                    putString("phase", "HEATUP")
+                    putLong("remainingMs", 15000)
+                    putString("timestamp", now.toString())
+                })
+                Log.d(TAG, "✅✅✅ PhaseChanged: HEATUP sent successfully")
+                promise.resolve("HEATUP phase triggered")
+            } else {
+                Log.w(TAG, "⚠️ Cannot trigger HEATUP - currentPhase is: $currentPhase")
+                promise.reject("INVALID_PHASE", "Cannot trigger HEATUP from phase: $currentPhase")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting session", e)
-            promise.reject("START_SESSION_ERROR", e.message, e)
+            Log.e(TAG, "Error triggering HEATUP phase", e)
+            promise.reject("TRIGGER_HEATUP_ERROR", e.message, e)
         }
     }
 
