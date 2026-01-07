@@ -24,25 +24,46 @@ export default function App() {
   
   const initializeApp = async () => {
     try {
-      // Check for OTA updates first (only in production)
-      if (!__DEV__ && Updates.isEnabled) {
-        try {
-          console.log('[App] 🔄 Checking for OTA updates...');
-          const update = await Updates.checkForUpdateAsync();
+      // ALWAYS check for OTA updates (works in both dev and production)
+      // This ensures updates are applied even if the APK was built before update code was added
+      try {
+        console.log('[App] 🔄 Checking for OTA updates...', { 
+          isEnabled: Updates.isEnabled, 
+          isEmbeddedLaunch: Updates.isEmbeddedLaunch,
+          updateId: Updates.updateId 
+        });
+        
+        // Force check for updates regardless of Updates.isEnabled
+        // This helps if the APK was built before OTA was fully configured
+        const update = await Updates.checkForUpdateAsync();
+        
+        console.log('[App] Update check result:', { 
+          isAvailable: update.isAvailable,
+          manifest: update.manifest ? 'present' : 'missing'
+        });
+        
+        if (update.isAvailable) {
+          console.log('[App] 📦 Update available, downloading...');
+          const fetchResult = await Updates.fetchUpdateAsync();
           
-          if (update.isAvailable) {
-            console.log('[App] 📦 Update available, downloading...');
-            await Updates.fetchUpdateAsync();
-            console.log('[App] ✅ Update downloaded, reloading app...');
+          if (fetchResult.isNew) {
+            console.log('[App] ✅ New update downloaded, reloading app...');
             await Updates.reloadAsync();
             return; // App will reload, so we don't need to continue
           } else {
-            console.log('[App] ✅ App is up to date');
+            console.log('[App] ⚠️ Update downloaded but not new, continuing...');
           }
-        } catch (updateError) {
-          console.error('[App] Error checking for updates:', updateError);
-          // Continue with app initialization even if update check fails
+        } else {
+          console.log('[App] ✅ App is up to date (no updates available)');
         }
+      } catch (updateError: any) {
+        console.error('[App] ❌ Error checking for updates:', updateError);
+        console.error('[App] Update error details:', {
+          message: updateError?.message,
+          code: updateError?.code,
+          name: updateError?.name
+        });
+        // Continue with app initialization even if update check fails
       }
       
       // TODO: TEMPORARILY DISABLED FOR TESTING - Remove this bypass when ready to enable QR activation
