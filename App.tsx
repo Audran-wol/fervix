@@ -23,8 +23,10 @@ export default function App() {
   
   const initializeApp = async () => {
     try {
+      // TODO: TEMPORARILY DISABLED FOR TESTING - Remove this bypass when ready to enable QR activation
       // Check if device is activated
-      const activated = await checkActivation();
+      // const activated = await checkActivation();
+      const activated = true; // TEMPORARY: Always treat as activated for testing
       
       // If activated, bind power controller and start monitoring
       if (activated) {
@@ -70,15 +72,16 @@ export default function App() {
     );
   }
   
+  // TODO: TEMPORARILY DISABLED FOR TESTING - Remove this bypass when ready to enable QR activation
   // If not activated, show activation screen
-  if (!isActivated) {
-    return (
-      <>
-        <StatusBar barStyle="dark-content" backgroundColor="#000" />
-        <ActivationScreen />
-      </>
-    );
-  }
+  // if (!isActivated) {
+  //   return (
+  //     <>
+  //       <StatusBar barStyle="dark-content" backgroundColor="#000" />
+  //       <ActivationScreen />
+  //     </>
+  //   );
+  // }
   
   // If activated, show main app
   return (
