@@ -7,6 +7,7 @@ import { useSessionStore } from './src/state';
 import { useActivationStore } from './src/state/useActivationStore';
 import { ActivationScreen } from './src/screens/Activation/ActivationScreen';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Updates from 'expo-updates';
 import './src/i18n'; // Initialize i18n
 
 // Keep the splash screen visible while we fetch resources
@@ -23,6 +24,27 @@ export default function App() {
   
   const initializeApp = async () => {
     try {
+      // Check for OTA updates first (only in production)
+      if (!__DEV__ && Updates.isEnabled) {
+        try {
+          console.log('[App] 🔄 Checking for OTA updates...');
+          const update = await Updates.checkForUpdateAsync();
+          
+          if (update.isAvailable) {
+            console.log('[App] 📦 Update available, downloading...');
+            await Updates.fetchUpdateAsync();
+            console.log('[App] ✅ Update downloaded, reloading app...');
+            await Updates.reloadAsync();
+            return; // App will reload, so we don't need to continue
+          } else {
+            console.log('[App] ✅ App is up to date');
+          }
+        } catch (updateError) {
+          console.error('[App] Error checking for updates:', updateError);
+          // Continue with app initialization even if update check fails
+        }
+      }
+      
       // TODO: TEMPORARILY DISABLED FOR TESTING - Remove this bypass when ready to enable QR activation
       // Check if device is activated
       // const activated = await checkActivation();
